@@ -7,16 +7,16 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
 export default function Settings() {
   const [connected, setConnected] = useState(false);
-  const [userEmail, setUserEmail] = useState("");
+  const [email, setEmail] = useState("");
   const supabase = createClient();
 
   useEffect(() => {
-    supabase.from("microsoft_tokens").select("*").limit(1).then(({ data }) => {
-      setConnected(!!(data && data.length > 0));
-    });
-    supabase.auth.getUser().then(({ data }) => {
-      setUserEmail(data.user?.email || "");
-    });
+    fetch("/api/auth/microsoft/status")
+      .then(r => r.json())
+      .then(data => {
+        setConnected(data.connected);
+        setEmail(data.email || "");
+      });
   }, []);
 
   const handleConnect = () => {
@@ -39,7 +39,7 @@ export default function Settings() {
         </CardHeader>
         <CardContent>
           <p className="text-sm text-muted-foreground mb-4">
-            {connected ? `Connected as ${userEmail}` : "Not connected"}
+            {connected ? `Connected as ${email}` : "Not connected"}
           </p>
           {connected ? (
             <Button variant="destructive" onClick={handleDisconnect}>Disconnect</Button>

@@ -3,8 +3,9 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import type { WizardData } from "@/types";
 
-export function StepAttachments({ data, updateData }: { data: any; updateData: (d: any) => void }) {
+export function StepAttachments({ data, updateData }: { data: WizardData; updateData: (d: Partial<WizardData>) => void }) {
   const [uploading, setUploading] = useState(false);
   const [globalFiles, setGlobalFiles] = useState<{ name: string; path: string }[]>(data.globalAttachments || []);
 

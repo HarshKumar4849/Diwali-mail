@@ -3,8 +3,9 @@
 import { useState } from "react";
 import { Input } from "@/components/ui/input";
 import { parseCSV } from "@/lib/utils";
+import type { WizardData } from "@/types";
 
-export function StepSetup({ data, updateData }: { data: any; updateData: (d: any) => void }) {
+export function StepSetup({ data, updateData }: { data: WizardData; updateData: (d: Partial<WizardData>) => void }) {
   const [csvPreview, setCsvPreview] = useState<string[][]>([]);
 
   const handleFile = async (e: React.ChangeEvent<HTMLInputElement>) => {

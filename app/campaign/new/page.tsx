@@ -8,11 +8,12 @@ import { StepRecipients } from "@/components/campaign-wizard/step-recipients";
 import { StepSendConfig } from "@/components/campaign-wizard/step-send-config";
 import { StepReview } from "@/components/campaign-wizard/step-review";
 import { useRouter } from "next/navigation";
+import type { WizardData } from "@/types";
 
 export default function NewCampaign() {
   const router = useRouter();
 
-  const handleComplete = async (data: any) => {
+  const handleComplete = async (data: WizardData) => {
     const campRes = await fetch("/api/campaigns", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -27,9 +28,8 @@ export default function NewCampaign() {
     });
     const campaign = await campRes.json();
 
-    // Import recipients (set per-recipient attachment_path from CSV column if configured)
     const attachmentCol = data.attachmentColumn;
-    const recipients = data.csvRows.map((row: any) => ({
+    const recipients = data.csvRows.map((row: Record<string, string>) => ({
       email: row.email,
       data: row,
       attachment_path: attachmentCol ? (row[attachmentCol] || "") : "",
@@ -40,13 +40,12 @@ export default function NewCampaign() {
       body: JSON.stringify({ recipients }),
     });
 
-    // Save global attachments
     if (data.globalAttachments?.length > 0) {
       await fetch(`/api/campaigns/${campaign.id}/attachments`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          attachments: data.globalAttachments.map((att: any) => ({
+          attachments: data.globalAttachments.map((att: { path: string; name: string }) => ({
             file_path: att.path,
             original_name: att.name,
             type: "global",

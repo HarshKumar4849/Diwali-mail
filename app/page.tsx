@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
-import { Campaign } from "@/types";
+import type { Campaign } from "@/types";
 import { CampaignCard } from "@/components/campaign-card";
 import { Button } from "@/components/ui/button";
 import { useRouter } from "next/navigation";
@@ -11,6 +11,7 @@ export default function Dashboard() {
   const [campaigns, setCampaigns] = useState<Campaign[]>([]);
   const [session, setSession] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
   const router = useRouter();
   const supabase = createClient();
 
@@ -24,7 +25,13 @@ export default function Dashboard() {
 
   useEffect(() => {
     if (!session) return;
-    fetch("/api/campaigns").then(r => r.json()).then(setCampaigns);
+    fetch("/api/campaigns")
+      .then(r => {
+        if (!r.ok) throw new Error("Failed to load campaigns");
+        return r.json();
+      })
+      .then(setCampaigns)
+      .catch(e => setError(e.message));
   }, [session]);
 
   if (loading) return <div className="p-8 text-center">Loading...</div>;
@@ -38,6 +45,7 @@ export default function Dashboard() {
           New Campaign
         </Button>
       </div>
+      {error && <p className="text-red-500 text-center mb-4">{error}</p>}
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
         {campaigns.map(c => (
           <div key={c.id} onClick={() => router.push(`/campaign/${c.id}`)}>
@@ -45,7 +53,7 @@ export default function Dashboard() {
           </div>
         ))}
       </div>
-      {campaigns.length === 0 && (
+      {campaigns.length === 0 && !error && (
         <p className="text-center text-muted-foreground mt-12">
           No campaigns yet. Create your first one!
         </p>

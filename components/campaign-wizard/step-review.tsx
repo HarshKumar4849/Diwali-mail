@@ -1,6 +1,8 @@
 "use client";
 
-export function StepReview({ data }: { data: any; updateData: (d: any) => void }) {
+import type { WizardData } from "@/types";
+
+export function StepReview({ data }: { data: WizardData; updateData: (d: Partial<WizardData>) => void }) {
   return (
     <div className="space-y-4">
       <div className="border rounded p-4">

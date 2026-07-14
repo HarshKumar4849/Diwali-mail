@@ -1,8 +1,9 @@
 "use client";
 
 import { Input } from "@/components/ui/input";
+import type { WizardData } from "@/types";
 
-export function StepSendConfig({ data, updateData }: { data: any; updateData: (d: any) => void }) {
+export function StepSendConfig({ data, updateData }: { data: WizardData; updateData: (d: Partial<WizardData>) => void }) {
   return (
     <div className="space-y-4">
       <div>

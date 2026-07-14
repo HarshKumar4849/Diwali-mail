@@ -3,6 +3,8 @@ import { renderTemplate } from "@/lib/email/template";
 import { createClient } from "@/lib/supabase/server";
 import type { Recipient, Campaign, Attachment } from "@/types";
 
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
 async function downloadAttachment(path: string, name: string): Promise<{ name: string; contentBytes: string; contentType: string }> {
   const supabase = await createClient();
   const isUrl = path.startsWith("http://") || path.startsWith("https://");
@@ -17,10 +19,25 @@ async function downloadAttachment(path: string, name: string): Promise<{ name: s
     buffer = await data.arrayBuffer();
   }
 
+  const ext = name.split(".").pop()?.toLowerCase() || "";
+  const contentType: Record<string, string> = {
+    pdf: "application/pdf",
+    png: "image/png",
+    jpg: "image/jpeg",
+    jpeg: "image/jpeg",
+    gif: "image/gif",
+    doc: "application/msword",
+    docx: "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+    xls: "application/vnd.ms-excel",
+    xlsx: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    csv: "text/csv",
+    txt: "text/plain",
+  };
+
   return {
     name,
     contentBytes: Buffer.from(buffer).toString("base64"),
-    contentType: "application/octet-stream",
+    contentType: contentType[ext] || "application/octet-stream",
   };
 }
 
@@ -43,15 +60,21 @@ export async function sendEmail({ campaign, recipient, globalAttachments }: Send
   };
 
   if (campaign.global_cc) {
-    message.ccRecipients = campaign.global_cc.split(",").map(e => ({
-      emailAddress: { address: e.trim() },
-    }));
+    const ccList = campaign.global_cc.split(",").map(e => e.trim()).filter(e => EMAIL_RE.test(e));
+    if (ccList.length > 0) {
+      message.ccRecipients = ccList.map(e => ({
+        emailAddress: { address: e },
+      }));
+    }
   }
 
   if (campaign.global_bcc) {
-    message.bccRecipients = campaign.global_bcc.split(",").map(e => ({
-      emailAddress: { address: e.trim() },
-    }));
+    const bccList = campaign.global_bcc.split(",").map(e => e.trim()).filter(e => EMAIL_RE.test(e));
+    if (bccList.length > 0) {
+      message.bccRecipients = bccList.map(e => ({
+        emailAddress: { address: e },
+      }));
+    }
   }
 
   const attachmentPromises: Promise<{ name: string; contentBytes: string; contentType: string }>[] = [];
@@ -59,7 +82,8 @@ export async function sendEmail({ campaign, recipient, globalAttachments }: Send
     attachmentPromises.push(downloadAttachment(a.file_path, a.original_name));
   }
   if (recipient.attachment_path) {
-    attachmentPromises.push(downloadAttachment(recipient.attachment_path, "attachment"));
+    const originalName = recipient.attachment_path.split("/").pop() || "attachment";
+    attachmentPromises.push(downloadAttachment(recipient.attachment_path, originalName));
   }
 
   if (attachmentPromises.length > 0) {
