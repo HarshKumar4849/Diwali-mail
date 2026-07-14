@@ -1,11 +1,11 @@
 "use client";
 
-import { useState, ReactNode } from "react";
+import { useState } from "react";
 import { Button } from "@/components/ui/button";
 
 interface WizardStep {
   title: string;
-  component: ReactNode;
+  render: (props: { data: any; updateData: (d: any) => void }) => React.ReactNode;
 }
 
 const STORAGE_KEY = "mailcraft-wizard-data";
@@ -39,6 +39,8 @@ export function Wizard({ steps, onComplete }: { steps: WizardStep[]; onComplete:
     if (currentStep > 0) setCurrentStep(currentStep - 1);
   };
 
+  const CurrentStep = steps[currentStep];
+
   return (
     <div className="max-w-3xl mx-auto p-6">
       <p className="text-xs text-muted-foreground mb-2 text-center">Progress is saved in this browser tab</p>
@@ -50,7 +52,7 @@ export function Wizard({ steps, onComplete }: { steps: WizardStep[]; onComplete:
         ))}
       </div>
       <div className="mb-6">
-        {React.cloneElement(steps[currentStep].component as React.ReactElement, { data, updateData })}
+        {CurrentStep.render({ data, updateData })}
       </div>
       <div className="flex justify-between">
         <Button variant="outline" onClick={prev} disabled={currentStep === 0}>Back</Button>

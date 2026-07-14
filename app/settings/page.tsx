@@ -12,7 +12,7 @@ export default function Settings() {
 
   useEffect(() => {
     supabase.from("microsoft_tokens").select("*").limit(1).then(({ data }) => {
-      setConnected(data && data.length > 0);
+      setConnected(!!(data && data.length > 0));
     });
     supabase.auth.getUser().then(({ data }) => {
       setUserEmail(data.user?.email || "");

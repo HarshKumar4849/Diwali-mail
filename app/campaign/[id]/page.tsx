@@ -24,7 +24,10 @@ export default function CampaignDetail() {
     const channel = supabase
       .channel(`campaign-${id}`)
       .on("postgres_changes", { event: "*", schema: "public", table: "recipients", filter: `campaign_id=eq.${id}` }, (payload) => {
-        setRecipients(prev => prev.map(r => r.id === payload.new.id ? payload.new as Recipient : r));
+        const newRecord = payload.new as Record<string, any>;
+        if (newRecord.id) {
+          setRecipients(prev => prev.map(r => r.id === newRecord.id ? newRecord as unknown as Recipient : r));
+        }
       })
       .subscribe();
     return () => { supabase.removeChannel(channel); };

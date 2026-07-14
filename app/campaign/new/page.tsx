@@ -64,12 +64,12 @@ export default function NewCampaign() {
       <h1 className="text-3xl font-bold text-center mb-6">New Campaign</h1>
       <Wizard
         steps={[
-          { title: "Setup", component: <StepSetup /> },
-          { title: "Template", component: <StepTemplate /> },
-          { title: "Attachments", component: <StepAttachments /> },
-          { title: "Recipients", component: <StepRecipients /> },
-          { title: "Send Config", component: <StepSendConfig /> },
-          { title: "Review", component: <StepReview /> },
+          { title: "Setup", render: (props) => <StepSetup {...props} /> },
+          { title: "Template", render: (props) => <StepTemplate {...props} /> },
+          { title: "Attachments", render: (props) => <StepAttachments {...props} /> },
+          { title: "Recipients", render: (props) => <StepRecipients {...props} /> },
+          { title: "Send Config", render: (props) => <StepSendConfig {...props} /> },
+          { title: "Review", render: (props) => <StepReview {...props} /> },
         ]}
         onComplete={handleComplete}
       />
