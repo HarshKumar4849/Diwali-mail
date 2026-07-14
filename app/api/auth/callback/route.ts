@@ -3,7 +3,13 @@ import { createClient } from "@/lib/supabase/server";
 
 export async function GET(req: NextRequest) {
   const code = req.nextUrl.searchParams.get("code");
+  const returnedState = req.nextUrl.searchParams.get("state");
   if (!code) return NextResponse.json({ error: "No code provided" }, { status: 400 });
+
+  const storedState = req.cookies.get("microsoft_oauth_state")?.value;
+  if (!returnedState || !storedState || returnedState !== storedState) {
+    return NextResponse.json({ error: "Invalid state parameter" }, { status: 403 });
+  }
 
   const tokenUrl = "https://login.microsoftonline.com/common/oauth2/v2.0/token";
   const body = new URLSearchParams({
@@ -33,5 +39,7 @@ export async function GET(req: NextRequest) {
     expires_at: expiresAt,
   }, { onConflict: "user_id" });
 
-  return NextResponse.redirect(`${process.env.NEXT_PUBLIC_APP_URL}/settings`);
+  const response = NextResponse.redirect(`${process.env.NEXT_PUBLIC_APP_URL}/settings`);
+  response.cookies.set("microsoft_oauth_state", "", { maxAge: 0, path: "/api/auth/callback" });
+  return response;
 }

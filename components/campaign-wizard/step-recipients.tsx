@@ -2,10 +2,11 @@
 
 import { useState } from "react";
 import { Input } from "@/components/ui/input";
+import type { WizardData } from "@/types";
 
-export function StepRecipients({ data, updateData }: { data: any; updateData: (d: any) => void }) {
+export function StepRecipients({ data }: { data: WizardData; updateData: (d: Partial<WizardData>) => void }) {
   const [search, setSearch] = useState("");
-  const filtered = (data.csvRows || []).filter((r: any) =>
+  const filtered = (data.csvRows || []).filter((r: Record<string, string>) =>
     r.email?.toLowerCase().includes(search.toLowerCase()) ||
     Object.values(r).some(v => v?.toString().toLowerCase().includes(search.toLowerCase()))
   );
@@ -24,7 +25,7 @@ export function StepRecipients({ data, updateData }: { data: any; updateData: (d
             </tr>
           </thead>
           <tbody>
-            {filtered.map((row: any, i: number) => (
+            {filtered.map((row: Record<string, string>, i: number) => (
               <tr key={i} className="border-t">
                 {data.csvHeaders?.map((h: string) => <td key={h} className="p-2">{row[h]}</td>)}
               </tr>

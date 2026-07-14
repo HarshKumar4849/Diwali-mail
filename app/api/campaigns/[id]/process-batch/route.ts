@@ -2,6 +2,10 @@ import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { sendEmail } from "@/lib/email/send";
 
+function delay(ms: number) {
+  return new Promise(resolve => setTimeout(resolve, ms));
+}
+
 export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
@@ -37,26 +41,38 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     return NextResponse.json({ done: true, status: newStatus });
   }
 
-  const results = await Promise.allSettled(
-    pending.map(async (recipient) => {
-      try {
-        await sendEmail({ campaign, recipient, globalAttachments: globalAttachments || [] });
-        await supabase.from("recipients").update({
-          status: "sent",
-          sent_at: new Date().toISOString(),
-        }).eq("id", recipient.id);
-      } catch (err: any) {
-        const retryCount = (recipient.retry_count || 0) + 1;
-        const newStatus = retryCount >= 3 ? "failed" : "pending";
-        await supabase.from("recipients").update({
-          status: newStatus,
-          error_message: err.message,
-          retry_count: retryCount,
-        }).eq("id", recipient.id);
-      }
-    })
-  );
+  const delayMs = Math.max(500, Math.floor(60000 / pending.length));
+  let sent = 0;
 
-  const sent = results.filter(r => r.status === "fulfilled").length;
+  for (const recipient of pending) {
+    const { data: claimed } = await supabase
+      .from("recipients")
+      .update({ status: "sending" })
+      .eq("id", recipient.id)
+      .eq("status", "pending")
+      .select()
+      .single();
+
+    if (!claimed) continue;
+
+    try {
+      await sendEmail({ campaign, recipient, globalAttachments: globalAttachments || [] });
+      await supabase.from("recipients").update({
+        status: "sent",
+        sent_at: new Date().toISOString(),
+      }).eq("id", recipient.id);
+      sent++;
+    } catch (err: unknown) {
+      const retryCount = (recipient.retry_count || 0) + 1;
+      const newStatus = retryCount >= 3 ? "failed" : "pending";
+      await supabase.from("recipients").update({
+        status: newStatus,
+        error_message: err instanceof Error ? err.message : "Unknown error",
+        retry_count: retryCount,
+      }).eq("id", recipient.id);
+    }
+    await delay(delayMs);
+  }
+
   return NextResponse.json({ processed: pending.length, sent });
 }

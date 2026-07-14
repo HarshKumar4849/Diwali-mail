@@ -1,5 +1,5 @@
 export type CampaignStatus = 'draft' | 'sending' | 'done' | 'partial';
-export type RecipientStatus = 'pending' | 'sent' | 'failed';
+export type RecipientStatus = 'pending' | 'sending' | 'sent' | 'failed';
 export type AttachmentType = 'global' | 'per-recipient';
 
 export interface Campaign {
@@ -54,4 +54,18 @@ export interface CampaignFormData {
   global_bcc: string;
   global_cc: string;
   rate_limit: number;
+}
+
+export interface WizardData {
+  name: string;
+  subject_template: string;
+  body_template: string;
+  global_bcc: string;
+  global_cc: string;
+  rate_limit: number;
+  csvHeaders: string[];
+  csvRows: Record<string, string>[];
+  csvFileName: string;
+  globalAttachments: { name: string; path: string }[];
+  attachmentColumn: string;
 }

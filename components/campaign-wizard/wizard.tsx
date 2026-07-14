@@ -2,15 +2,16 @@
 
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
+import type { WizardData } from "@/types";
 
 interface WizardStep {
   title: string;
-  render: (props: { data: any; updateData: (d: any) => void }) => React.ReactNode;
+  render: (props: { data: WizardData; updateData: (d: Partial<WizardData>) => void }) => React.ReactNode;
 }
 
 const STORAGE_KEY = "mailcraft-wizard-data";
 
-function loadSavedData(): any {
+function loadSavedData(): Partial<WizardData> {
   if (typeof window === "undefined") return {};
   try {
     const saved = sessionStorage.getItem(STORAGE_KEY);
@@ -18,12 +19,12 @@ function loadSavedData(): any {
   } catch { return {}; }
 }
 
-export function Wizard({ steps, onComplete }: { steps: WizardStep[]; onComplete: (data: any) => void }) {
+export function Wizard({ steps, onComplete }: { steps: WizardStep[]; onComplete: (data: WizardData) => void }) {
   const [currentStep, setCurrentStep] = useState(0);
-  const [data, setData] = useState<any>(loadSavedData);
+  const [data, setData] = useState<WizardData>(loadSavedData as unknown as WizardData);
 
-  const updateData = (partial: any) => {
-    setData((prev: any) => {
+  const updateData = (partial: Partial<WizardData>) => {
+    setData((prev: WizardData) => {
       const next = { ...prev, ...partial };
       try { sessionStorage.setItem(STORAGE_KEY, JSON.stringify(next)); } catch {}
       return next;

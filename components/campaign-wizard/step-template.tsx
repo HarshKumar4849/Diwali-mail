@@ -3,11 +3,12 @@
 import { useState } from "react";
 import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
-import { renderTemplate } from "@/lib/utils";
+import { renderTemplate } from "@/lib/email/template";
+import type { WizardData } from "@/types";
 
-export function StepTemplate({ data, updateData }: { data: any; updateData: (d: any) => void }) {
+export function StepTemplate({ data, updateData }: { data: WizardData; updateData: (d: Partial<WizardData>) => void }) {
   const [showPreview, setShowPreview] = useState(false);
-  const sampleData = data.csvHeaders?.reduce((acc: any, h: string) => {
+  const sampleData = data.csvHeaders?.reduce((acc: Record<string, string>, h: string) => {
     acc[h] = data.csvRows?.[0]?.[h] || `{{${h}}}`;
     return acc;
   }, {}) || {};
@@ -51,7 +52,7 @@ export function StepTemplate({ data, updateData }: { data: any; updateData: (d: 
       {showPreview && (
         <div className="border rounded p-4 bg-muted/30">
           <p className="font-semibold">{renderTemplate(data.subject_template || "", sampleData)}</p>
-          <div className="mt-2" dangerouslySetInnerHTML={{ __html: renderTemplate(data.body_template || "", sampleData).replace(/\n/g, "<br>") }} />
+          <div className="mt-2 whitespace-pre-wrap">{renderTemplate(data.body_template || "", sampleData)}</div>
         </div>
       )}
     </div>
