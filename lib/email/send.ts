@@ -53,7 +53,7 @@ export async function sendEmail({ campaign, recipient, globalAttachments }: Send
   const subject = renderTemplate(campaign.subject_template, recipient.data);
   const body = renderTemplate(campaign.body_template, recipient.data);
 
-  const message: any = {
+  const message: Record<string, unknown> = {
     subject,
     body: { contentType: "HTML", content: body.replace(/\n/g, "<br>") },
     toRecipients: [{ emailAddress: { address: recipient.email } }],

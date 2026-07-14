@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import type { Campaign, Recipient } from "@/types";
+import type { RealtimePostgresChangesPayload } from "@supabase/supabase-js";
 import { ProgressBar } from "@/components/progress-bar";
 import { RecipientTable } from "@/components/recipient-table";
 import { Button } from "@/components/ui/button";
@@ -37,8 +38,8 @@ export default function CampaignDetail() {
   useEffect(() => {
     const channel = supabase
       .channel(`campaign-${id}`)
-      .on("postgres_changes", { event: "*", schema: "public", table: "recipients", filter: `campaign_id=eq.${id}` }, (payload) => {
-        const newRecord = payload.new as Record<string, any>;
+      .on("postgres_changes", { event: "*", schema: "public", table: "recipients", filter: `campaign_id=eq.${id}` }, (payload: RealtimePostgresChangesPayload<{ [key: string]: unknown }>) => {
+        const newRecord = payload.new as { [key: string]: unknown };
         if (newRecord.id) {
           setRecipients(prev => prev.map(r => r.id === newRecord.id ? newRecord as unknown as Recipient : r));
         }
@@ -54,8 +55,8 @@ export default function CampaignDetail() {
       const res = await fetch(`/api/campaigns/${id}/send`, { method: "POST" });
       if (!res.ok) throw new Error("Failed to start sending");
       setCampaign(prev => prev ? { ...prev, status: "sending" } : prev);
-    } catch (e: any) {
-      setError(e.message);
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : "Failed to start sending");
     }
     setSending(false);
   };
@@ -67,8 +68,8 @@ export default function CampaignDetail() {
       const res = await fetch(`/api/campaigns/${id}/retry`, { method: "POST" });
       if (!res.ok) throw new Error("Failed to retry");
       setCampaign(prev => prev ? { ...prev, status: "sending" } : prev);
-    } catch (e: any) {
-      setError(e.message);
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : "Failed to retry");
     }
     setSending(false);
   };

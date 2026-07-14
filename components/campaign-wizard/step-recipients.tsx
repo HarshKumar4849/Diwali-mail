@@ -4,7 +4,7 @@ import { useState } from "react";
 import { Input } from "@/components/ui/input";
 import type { WizardData } from "@/types";
 
-export function StepRecipients({ data, updateData }: { data: WizardData; updateData: (d: Partial<WizardData>) => void }) {
+export function StepRecipients({ data }: { data: WizardData; updateData: (d: Partial<WizardData>) => void }) {
   const [search, setSearch] = useState("");
   const filtered = (data.csvRows || []).filter((r: Record<string, string>) =>
     r.email?.toLowerCase().includes(search.toLowerCase()) ||

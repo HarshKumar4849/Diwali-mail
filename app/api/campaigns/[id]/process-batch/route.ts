@@ -62,12 +62,12 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
         sent_at: new Date().toISOString(),
       }).eq("id", recipient.id);
       sent++;
-    } catch (err: any) {
+    } catch (err: unknown) {
       const retryCount = (recipient.retry_count || 0) + 1;
       const newStatus = retryCount >= 3 ? "failed" : "pending";
       await supabase.from("recipients").update({
         status: newStatus,
-        error_message: err.message,
+        error_message: err instanceof Error ? err.message : "Unknown error",
         retry_count: retryCount,
       }).eq("id", recipient.id);
     }
