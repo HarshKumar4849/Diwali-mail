@@ -5,11 +5,14 @@ export function ProgressBar({ sent, total }: { sent: number; total: number }) {
   return (
     <div>
       <div className="flex justify-between text-sm mb-1">
-        <span>{sent} of {total} sent</span>
-        <span>{pct}%</span>
+        <span className="text-muted-foreground">{sent} of {total} sent</span>
+        <span className="font-medium text-primary">{pct}%</span>
       </div>
-      <div className="w-full bg-muted rounded-full h-3">
-        <div className="bg-primary h-3 rounded-full transition-all" style={{ width: `${pct}%` }} />
+      <div className="w-full bg-muted rounded-full h-2.5 overflow-hidden">
+        <div
+          className="bg-primary h-full rounded-full transition-all duration-500 ease-out"
+          style={{ width: `${pct}%` }}
+        />
       </div>
     </div>
   );
