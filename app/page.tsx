@@ -96,6 +96,10 @@ export default function Dashboard() {
           >
             <CampaignCard
               campaign={c}
+              onEdit={(e) => {
+                e.stopPropagation();
+                router.push(`/campaign/edit/${c.id}`);
+              }}
               onDelete={(e) => handleDelete(e, c.id)}
               onClone={async (e) => {
                 e.stopPropagation();

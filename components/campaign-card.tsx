@@ -4,7 +4,7 @@ import { Campaign } from "@/types";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Copy, Trash2 } from "lucide-react";
+import { Copy, Trash2, Pencil } from "lucide-react";
 
 const statusConfig: Record<string, { label: string; className: string }> = {
   draft: { label: "Draft", className: "bg-muted text-muted-foreground" },
@@ -17,10 +17,12 @@ export function CampaignCard({
   campaign,
   onDelete,
   onClone,
+  onEdit,
 }: {
   campaign: Campaign;
   onDelete?: (e: React.MouseEvent) => void;
   onClone?: (e: React.MouseEvent) => void;
+  onEdit?: (e: React.MouseEvent) => void;
 }) {
   const status = statusConfig[campaign.status] || statusConfig.draft;
 
@@ -39,8 +41,14 @@ export function CampaignCard({
         <p className="text-sm text-muted-foreground truncate">
           Subject: {campaign.subject_template}
         </p>
-        {(onDelete || onClone) && (
+        {(onDelete || onClone || onEdit) && (
           <div className="flex items-center gap-1 mt-3 pt-3 border-t">
+            {onEdit && (
+              <Button variant="outline" size="sm" onClick={onEdit} className="h-8 text-xs gap-1">
+                <Pencil className="size-3" />
+                Edit
+              </Button>
+            )}
             {onClone && (
               <Button variant="outline" size="sm" onClick={onClone} className="h-8 text-xs gap-1">
                 <Copy className="size-3" />
