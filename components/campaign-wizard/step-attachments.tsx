@@ -11,20 +11,23 @@ export function StepAttachments({ data, updateData }: { data: WizardData; update
   const uploadFile = async (file: File) => {
     setUploading(true);
     try {
-      const buffer = await file.arrayBuffer();
-      const bytes = new Uint8Array(buffer);
-      let binary = "";
-      for (let i = 0; i < bytes.length; i++) binary += String.fromCharCode(bytes[i]);
-      const base64 = btoa(binary);
-
+      // Request a presigned upload URL from our server
       const res = await fetch("/api/upload", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name: file.name, base64 }),
+        body: JSON.stringify({ name: file.name }),
       });
       const result = await res.json();
-      if (!res.ok) throw new Error(result.error || "Upload failed");
-      if (!result.path) throw new Error("Upload response missing path");
+      if (!res.ok) throw new Error(result.error || "Failed to get upload URL");
+
+      // Upload directly to Supabase Storage (bypasses Vercel's serverless limit)
+      const uploadRes = await fetch(result.uploadUrl, {
+        method: "PUT",
+        body: file,
+        headers: { "Content-Type": file.type || "application/octet-stream" },
+      });
+      if (!uploadRes.ok) throw new Error("Upload to storage failed");
+
       const newFiles = [...globalFiles, { name: result.originalName, path: result.path }];
       setGlobalFiles(newFiles);
       updateData({ globalAttachments: newFiles });
