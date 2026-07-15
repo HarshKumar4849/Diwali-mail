@@ -4,6 +4,7 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import type { WizardData } from "@/types";
 import { cn } from "@/lib/utils";
+import { ErrorBoundary } from "@/components/error-boundary";
 
 interface WizardStep {
   title: string;
@@ -77,7 +78,14 @@ export function Wizard({ steps, onComplete, loading }: { steps: WizardStep[]; on
 
       {/* Step content */}
       <div className="mb-6">
-        {CurrentStep.render({ data, updateData })}
+        <ErrorBoundary key={currentStep} fallback={
+          <div className="p-8 text-center text-muted-foreground">
+            Something went wrong rendering this step.{" "}
+            <button className="underline text-primary" onClick={prev}>Go back</button> and try again.
+          </div>
+        }>
+          {CurrentStep.render({ data, updateData })}
+        </ErrorBoundary>
       </div>
 
       {/* Bottom-fixed nav buttons */}
