@@ -127,4 +127,7 @@
   html {
     @apply font-sans;
   }
+  *:focus-visible {
+    @apply ring-[3px] ring-ring/50;
+  }
 }
