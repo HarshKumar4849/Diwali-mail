@@ -115,7 +115,7 @@ export function StepTemplate({ data, updateData }: { data: WizardData; updateDat
             <span className="text-xs text-muted-foreground font-medium">Rendered Preview (using first row):</span>
             <p className="text-xs text-muted-foreground mt-1">Showing data for: {Object.values(sampleData).filter(v => !v.startsWith('{{')).join(', ') || '(no data)'}</p>
             <p className="font-semibold mt-1 break-words">{renderTemplate(data.subject_template || "", sampleData)}</p>
-            <div className="mt-0.5 text-sm overflow-x-auto break-words [&_p]:my-1 [&_p:empty]:hidden" dangerouslySetInnerHTML={{ __html: renderTemplate(data.body_template || "", sampleData) }} />
+            <div className="mt-0.5 text-sm overflow-x-auto break-words whitespace-pre-wrap [&_p]:my-1 [&_p:empty]:hidden" dangerouslySetInnerHTML={{ __html: renderTemplate(data.body_template || "", sampleData) }} />
           </div>
         </div>
       )}

@@ -78,7 +78,7 @@ async function extractParaContent(paraXml: string, zip: any, rels: Record<string
         : ext === "webp" ? "image/webp"
         : "image/png";
 
-      const dimStyle = width ? ` max-width: 100%; width: ${width}px; height: ${height}px` : ` max-width: 100%`;
+      const dimStyle = width ? `max-width: 100%; width: ${width}px; height: ${height}px; display: inline-block` : `max-width: 100%; display: inline-block`;
       return `<img src="data:${mime};base64,${imageBuffer}" style="${dimStyle}" alt="" />`;
     }
 
@@ -144,7 +144,7 @@ async function processTable(tblXml: string, zip: any, rels: Record<string, strin
       const tcWMatch = cellXml.match(/<w:tcW\s+w:w="(\d+)"/);
       let cellStyle = "";
       if (tcWMatch) {
-        cellStyle = ` style="width: ${twipToPt(tcWMatch[1])}; vertical-align: top"`;
+        cellStyle = ` style="width: ${twipToPt(tcWMatch[1])}; vertical-align: middle"`;
       }
 
       // Colspan
