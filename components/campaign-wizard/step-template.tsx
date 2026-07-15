@@ -29,6 +29,7 @@ export function StepTemplate({ data, updateData }: { data: WizardData; updateDat
 
       let fmtCounter = 0;
       const fmtStyles: Record<string, string> = {};
+      const styleMapEntries: string[] = [];
 
       interface MammothParagraph {
         type: string;
@@ -68,7 +69,9 @@ export function StepTemplate({ data, updateData }: { data: WizardData; updateDat
           const key = styles.join("; ");
           if (!fmtStyles[key]) {
             fmtCounter++;
-            fmtStyles[key] = `fmt-${fmtCounter}`;
+            const cls = `fmt-${fmtCounter}`;
+            fmtStyles[key] = cls;
+            styleMapEntries.push(`p[style-name='${cls}'] => p.${cls}`);
           }
           return { ...element, styleName: fmtStyles[key] };
         }
@@ -82,6 +85,7 @@ export function StepTemplate({ data, updateData }: { data: WizardData; updateDat
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
           transformDocument: (mammoth as any).transforms.paragraph(transformParagraph),
           ignoreEmptyParagraphs: false,
+          styleMap: styleMapEntries,
         }
       );
 
