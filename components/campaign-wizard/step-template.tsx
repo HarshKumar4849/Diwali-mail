@@ -66,15 +66,19 @@ export function StepTemplate({ data, updateData }: { data: WizardData; updateDat
         </button>
       </div>
 
-      {showPreview && (
-        <div className="border rounded p-4 bg-muted/30 space-y-3">
+      {showPreview && data.csvRows?.[0] && (
+        <div className="border rounded p-4 bg-muted/30 space-y-4">
           <div>
-            <span className="text-xs text-muted-foreground font-medium">Subject:</span>
-            <p className="font-semibold mt-0.5" dangerouslySetInnerHTML={{ __html: highlightPlaceholders(renderTemplate(data.subject_template || "", sampleData)) }} />
+            <span className="text-xs text-muted-foreground font-medium">Template (with placeholders):</span>
+            <p className="font-semibold mt-0.5" dangerouslySetInnerHTML={{ __html: highlightPlaceholders(data.subject_template || "") }} />
+            <div className="mt-0.5 whitespace-pre-wrap text-sm" dangerouslySetInnerHTML={{ __html: highlightPlaceholders(data.body_template || "") }} />
           </div>
+          <hr className="border-muted" />
           <div>
-            <span className="text-xs text-muted-foreground font-medium">Body:</span>
-            <div className="mt-0.5 whitespace-pre-wrap text-sm" dangerouslySetInnerHTML={{ __html: highlightPlaceholders(renderTemplate(data.body_template || "", sampleData)) }} />
+            <span className="text-xs text-muted-foreground font-medium">Rendered Preview (using first row):</span>
+            <p className="text-xs text-muted-foreground mt-1">Showing data for: {Object.values(sampleData).filter(v => !v.startsWith('{{')).join(', ') || '(no data)'}</p>
+            <p className="font-semibold mt-1">{renderTemplate(data.subject_template || "", sampleData)}</p>
+            <div className="mt-0.5 whitespace-pre-wrap text-sm">{renderTemplate(data.body_template || "", sampleData)}</div>
           </div>
         </div>
       )}
