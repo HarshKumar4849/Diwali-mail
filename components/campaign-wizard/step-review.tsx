@@ -1,8 +1,22 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import type { WizardData } from "@/types";
 
 export function StepReview({ data }: { data: WizardData; updateData: (d: Partial<WizardData>) => void }) {
+  const [connected, setConnected] = useState<boolean | null>(null);
+  const [email, setEmail] = useState("");
+
+  useEffect(() => {
+    fetch("/api/auth/microsoft/status")
+      .then(r => r.json())
+      .then(d => {
+        setConnected(d.connected);
+        setEmail(d.email || "");
+      })
+      .catch(() => setConnected(false));
+  }, []);
+
   return (
     <div className="space-y-4">
       <div className="border rounded p-4">
@@ -15,6 +29,25 @@ export function StepReview({ data }: { data: WizardData; updateData: (d: Partial
         <p className="text-sm"><strong>Global Attachments:</strong> {data.globalAttachments?.length || 0} files</p>
         <p className="text-sm"><strong>Per-Recipient Attachment Column:</strong> {data.attachmentColumn || "None"}</p>
       </div>
+
+      <div className="border rounded p-4">
+        <div className="flex items-center justify-between">
+          <h4 className="font-medium">Microsoft Outlook</h4>
+          {connected === null ? (
+            <span className="text-xs text-muted-foreground">Checking...</span>
+          ) : connected ? (
+            <span className="text-xs text-green-600">Connected as {email}</span>
+          ) : (
+            <a
+              href="/api/auth/microsoft"
+              className="text-xs text-primary underline hover:text-primary/80"
+            >
+              Connect Outlook
+            </a>
+          )}
+        </div>
+      </div>
+
       <div className="border rounded p-4">
         <h4 className="font-medium mb-2">Email Preview (first recipient)</h4>
         {data.csvRows?.[0] && (

@@ -19,7 +19,7 @@ function loadSavedData(): Partial<WizardData> {
   } catch { return {}; }
 }
 
-export function Wizard({ steps, onComplete }: { steps: WizardStep[]; onComplete: (data: WizardData) => void }) {
+export function Wizard({ steps, onComplete, loading }: { steps: WizardStep[]; onComplete: (data: WizardData) => void; loading?: boolean }) {
   const [currentStep, setCurrentStep] = useState(0);
   const [data, setData] = useState<WizardData>(loadSavedData as unknown as WizardData);
 
@@ -56,8 +56,10 @@ export function Wizard({ steps, onComplete }: { steps: WizardStep[]; onComplete:
         {CurrentStep.render({ data, updateData })}
       </div>
       <div className="flex justify-between">
-        <Button variant="outline" onClick={prev} disabled={currentStep === 0}>Back</Button>
-        <Button onClick={next}>{currentStep < steps.length - 1 ? "Next" : "Review & Send"}</Button>
+        <Button variant="outline" onClick={prev} disabled={currentStep === 0 || loading}>Back</Button>
+        <Button onClick={next} disabled={loading}>
+          {loading ? "Saving & Sending..." : currentStep < steps.length - 1 ? "Next" : "Review & Send"}
+        </Button>
       </div>
     </div>
   );

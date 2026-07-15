@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useEffect, type KeyboardEvent } from "react";
+import { useState, useRef, useEffect, useMemo, useCallback, memo, type KeyboardEvent } from "react";
 
 interface Props {
   value: string;
@@ -13,7 +13,16 @@ interface Props {
   multiline?: boolean;
 }
 
-export function PlaceholderAutocomplete({
+function detectPlaceholder(val: string, cursorPos: number) {
+  const before = val.slice(0, cursorPos);
+  const openIdx = before.lastIndexOf("{{");
+  if (openIdx === -1) return null;
+  const afterOpen = before.slice(openIdx + 2);
+  if (afterOpen.includes("}}")) return null;
+  return { start: openIdx, end: cursorPos, typed: afterOpen };
+}
+
+export const PlaceholderAutocomplete = memo(function PlaceholderAutocomplete({
   value,
   onChange,
   columns,
@@ -24,56 +33,53 @@ export function PlaceholderAutocomplete({
   multiline,
 }: Props) {
   const inputRef = useRef<HTMLTextAreaElement | HTMLInputElement>(null);
+  const dropdownRef = useRef<HTMLDivElement>(null);
+  const insertPosRef = useRef<{ start: number; end: number } | null>(null);
+  const valueRef = useRef(value);
+  valueRef.current = value;
+
   const [showDropdown, setShowDropdown] = useState(false);
   const [filter, setFilter] = useState("");
-  const [insertPos, setInsertPos] = useState<{ start: number; end: number } | null>(null);
   const [selectedIdx, setSelectedIdx] = useState(0);
-  const dropdownRef = useRef<HTMLDivElement>(null);
 
-  const filtered = columns.filter((c) =>
-    c.toLowerCase().includes(filter.toLowerCase())
+  const filtered = useMemo(
+    () => columns.filter((c) => c.toLowerCase().includes(filter.toLowerCase())),
+    [columns, filter]
   );
 
-  function detectPlaceholder(val: string, cursorPos: number) {
-    const before = val.slice(0, cursorPos);
-    const openIdx = before.lastIndexOf("{{");
-    if (openIdx === -1) return null;
-    const afterOpen = before.slice(openIdx + 2);
-    if (afterOpen.includes("}}")) return null;
-    return { start: openIdx, end: cursorPos, typed: afterOpen };
-  }
-
-  function handleInput(val: string, cursorPos: number) {
+  const handleInput = useCallback(function handleInput(val: string, cursorPos: number) {
     onChange(val);
     const match = detectPlaceholder(val, cursorPos);
     if (match) {
       setFilter(match.typed);
-      setInsertPos({ start: match.start, end: match.end });
+      insertPosRef.current = { start: match.start, end: match.end };
       setShowDropdown(true);
       setSelectedIdx(0);
     } else {
       setShowDropdown(false);
     }
-  }
+  }, [onChange]);
 
-  function insertColumn(col: string) {
-    if (!insertPos) return;
-    const before = value.slice(0, insertPos.start);
-    const after = value.slice(insertPos.end);
+  const insertColumn = useCallback(function insertColumn(col: string) {
+    const pos = insertPosRef.current;
+    if (!pos) return;
+    const curVal = valueRef.current;
+    const before = curVal.slice(0, pos.start);
+    const after = curVal.slice(pos.end);
     const tag = `{{${col}}}`;
     const newVal = before + tag + after;
     onChange(newVal);
     setShowDropdown(false);
     requestAnimationFrame(() => {
       if (inputRef.current) {
-        const pos = insertPos.start + tag.length;
-        inputRef.current.setSelectionRange(pos, pos);
+        const cursorPos = pos.start + tag.length;
+        inputRef.current.setSelectionRange(cursorPos, cursorPos);
         inputRef.current.focus();
       }
     });
-  }
+  }, [onChange]);
 
-  function handleKeyDown(e: KeyboardEvent) {
+  const handleKeyDown = useCallback(function handleKeyDown(e: KeyboardEvent) {
     if (!showDropdown || filtered.length === 0) return;
     if (e.key === "ArrowDown") {
       e.preventDefault();
@@ -87,7 +93,7 @@ export function PlaceholderAutocomplete({
     } else if (e.key === "Escape") {
       setShowDropdown(false);
     }
-  }
+  }, [showDropdown, filtered, selectedIdx, insertColumn]);
 
   useEffect(() => {
     if (!showDropdown) return;
@@ -100,12 +106,20 @@ export function PlaceholderAutocomplete({
     return () => document.removeEventListener("mousedown", handleClick);
   }, [showDropdown]);
 
-  const common = {
+  const onChangeHandler = useCallback(function onChangeHandler(
+    e: React.ChangeEvent<HTMLTextAreaElement | HTMLInputElement>
+  ) {
+    const cursor = (e.target as HTMLTextAreaElement | HTMLInputElement).selectionStart ?? 0;
+    handleInput(e.target.value, cursor);
+  }, [handleInput]);
+
+  const commonProps = {
     ref: inputRef as any,
     value,
     placeholder,
     id,
     onKeyDown: handleKeyDown,
+    onChange: onChangeHandler,
   };
 
   return (
@@ -113,46 +127,14 @@ export function PlaceholderAutocomplete({
       <label className="block text-sm font-medium">{label}</label>
       {multiline ? (
         <textarea
-          {...common}
+          {...commonProps}
           rows={rows || 6}
           className="flex w-full rounded-md border border-input bg-transparent px-3 py-2 text-base shadow-sm transition-colors placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50 md:text-sm font-mono"
-          onChange={(e) => {
-            const cursor = e.target.selectionStart;
-            handleInput(e.target.value, cursor);
-          }}
-          onSelect={(e) => {
-            const cursor = (e.target as HTMLTextAreaElement).selectionStart;
-            const match = detectPlaceholder(value, cursor);
-            if (match) {
-              setFilter(match.typed);
-              setInsertPos({ start: match.start, end: match.end });
-              setShowDropdown(true);
-              setSelectedIdx(0);
-            } else {
-              setShowDropdown(false);
-            }
-          }}
         />
       ) : (
         <input
-          {...common}
+          {...commonProps}
           className="flex w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-sm transition-colors placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50 font-mono"
-          onChange={(e) => {
-            const cursor = e.target.selectionStart!;
-            handleInput(e.target.value, cursor);
-          }}
-          onSelect={(e) => {
-            const cursor = (e.target as HTMLInputElement).selectionStart!;
-            const match = detectPlaceholder(value, cursor);
-            if (match) {
-              setFilter(match.typed);
-              setInsertPos({ start: match.start, end: match.end });
-              setShowDropdown(true);
-              setSelectedIdx(0);
-            } else {
-              setShowDropdown(false);
-            }
-          }}
         />
       )}
       {showDropdown && filtered.length > 0 && (
@@ -180,4 +162,4 @@ export function PlaceholderAutocomplete({
       )}
     </div>
   );
-}
+});
