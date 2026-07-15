@@ -12,5 +12,11 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
 
   await supabase.from("campaigns").update({ status: "sending" }).eq("id", id);
 
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL || `http://${req.headers.get("host") || "localhost:3000"}`;
+  fetch(`${appUrl}/api/campaigns/${id}/process-batch`, {
+    method: "POST",
+    headers: { "x-internal-token": process.env.SUPABASE_SECRET_KEY || "" },
+  }).catch(err => console.error(`[send] Campaign ${id}: initial batch trigger failed:`, err));
+
   return NextResponse.json({ status: "sending" });
 }

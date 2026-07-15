@@ -1,0 +1,25 @@
+<h2>Layout & Responsiveness</h2>
+<p class="subtitle">Mobile-first layout system</p>
+
+<div class="section">
+  <h3>Dashboard</h3>
+  <p><strong>Desktop (≥768px):</strong> 3-column grid of campaign cards with consistent teal accent on status badges and action buttons.</p>
+  <p><strong>Mobile:</strong> Single-column stacked cards, full-width with proper touch targets (min 44px). "New Campaign" FAB button in bottom-right corner.</p>
+</div>
+
+<div class="section">
+  <h3>Campaign Wizard</h3>
+  <p><strong>Desktop:</strong> Current centered layout (<code>max-w-3xl</code>) with step indicator at top. Wider form fields, side-by-side where appropriate.</p>
+  <p><strong>Mobile:</strong> Full-width wizard, step indicator compresses to just step numbers with teal active indicator. Each step stacks vertically. Larger touch targets for buttons. Bottom-fixed "Next" button for easy thumb access.</p>
+</div>
+
+<div class="section">
+  <h3>Campaign Detail</h3>
+  <p><strong>Desktop:</strong> Two-column layout — left has campaign info + progress, right has recipient preview table.</p>
+  <p><strong>Mobile:</strong> Single column stacked. Progress bar full-width. Recipient table becomes a horizontal-scroll card or a simple list with status dots. Action buttons (Send, Retry) are full-width at bottom.</p>
+</div>
+
+<div class="section">
+  <h3>Tables</h3>
+  <p>Already wrapped in <code>overflow-x-auto</code>. On mobile, reduce columns — show only essential info (email, status) and collapse details into a clickable row expansion.</p>
+</div>

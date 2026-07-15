@@ -1,0 +1,31 @@
+<h2>Approaches</h2>
+<p class="subtitle">Three ways to get to a teal, mobile-friendly Mailcraft</p>
+
+<div class="section">
+  <h3>A — CSS Variable Swap (Too Light)</h3>
+  <p>Change just the CSS custom properties in <code>globals.css</code> and shadcn theme. Add bottom nav. Minimal code changes — but won't get you the "full redesign" you want.</p>
+  <div class="pros-cons">
+    <div class="pros"><h4>Pros</h4><ul><li>Fastest to implement</li><li>Zero component changes</li></ul></div>
+    <div class="cons"><h4>Cons</h4><ul><li>Doesn't match "full redesign" scope</li><li>Misses opportunity to improve UX</li></ul></div>
+  </div>
+</div>
+
+<div class="section">
+  <h3>B — Systematic Theme Overhaul (Recommended)</h3>
+  <p>Full teal theme via CSS variables + per-component visual refinements + mobile bottom navigation + responsive wizard/table/dashboard redesigns + micro-interactions. Keeps the solid shadcn component structure but makes everything feel intentional and cohesive.</p>
+  <div class="pros-cons">
+    <div class="pros"><h4>Pros</h4><ul><li>Comprehensive, cohesive result</li><li>Leverages existing shadcn structure</li><li>Moderate implementation effort</li></ul></div>
+    <div class="cons"><h4>Cons</h4><ul><li>Bound by existing component structure</li></ul></div>
+  </div>
+</div>
+
+<div class="section">
+  <h3>C — Custom Component Library</h3>
+  <p>Replace shadcn/ui components with fully custom, hand-crafted components in teal. Maximum design control.</p>
+  <div class="pros-cons">
+    <div class="pros"><h4>Pros</h4><ul><li>Total design freedom</li><li>Consistent bespoke look</li></ul></div>
+    <div class="cons"><h4>Cons</h4><ul><li>Massive effort (rebuild ~9 components)</li><li>Lose shadcn accessibility guarantees</li><li>Ongoing maintenance burden</li></ul></div>
+  </div>
+</div>
+
+<p><strong>My recommendation: B.</strong> It hits the "full redesign" bar without rebuilding what works. The shadcn components are already solid — they just need teal theming, visual refinements, and mobile-responsive restructuring.</p>

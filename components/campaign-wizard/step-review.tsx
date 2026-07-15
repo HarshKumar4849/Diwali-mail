@@ -50,12 +50,13 @@ export function StepReview({ data }: { data: WizardData; updateData: (d: Partial
 
       <div className="border rounded p-4">
         <h4 className="font-medium mb-2">Email Preview (first recipient)</h4>
-        {data.csvRows?.[0] && (
+        {data.csvRows?.[0] && data.emailColumn && (
           <div>
-            <p><strong>To:</strong> {data.csvRows[0].email}</p>
+            <p><strong>To:</strong> {data.csvRows[0][data.emailColumn]}</p>
+            <p><strong>Subject:</strong> {data.subject_template.replace(/\{\{(.+?)\}\}/g, (_, k) => data.csvRows[0][k.trim()] || `{{${k.trim()}}}`)}</p>
             <p><strong>Body:</strong></p>
             <div className="bg-muted p-3 rounded mt-1 text-sm whitespace-pre-wrap">
-              {data.body_template}
+              {data.body_template.replace(/\{\{(.+?)\}\}/g, (_, k) => data.csvRows[0][k.trim()] || `{{${k.trim()}}}`)}
             </div>
           </div>
         )}

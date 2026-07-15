@@ -42,11 +42,23 @@ export async function GET(req: NextRequest) {
     return NextResponse.redirect(settingsUrl);
   }
 
+  let microsoftEmail = "";
+  try {
+    const meRes = await fetch("https://graph.microsoft.com/v1.0/me?$select=mail,userPrincipalName", {
+      headers: { Authorization: `Bearer ${tokenData.access_token}` },
+    });
+    if (meRes.ok) {
+      const meData = await meRes.json();
+      microsoftEmail = meData.mail || meData.userPrincipalName || "";
+    }
+  } catch {}
+
   const { error: upsertError } = await supabase.from("microsoft_tokens").upsert({
     user_id: user.id,
     access_token: tokenData.access_token,
     refresh_token: tokenData.refresh_token,
     expires_at: expiresAt,
+    microsoft_email: microsoftEmail,
   }, { onConflict: "user_id" });
 
   if (upsertError) {

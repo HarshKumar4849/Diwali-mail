@@ -6,8 +6,9 @@ import type { WizardData } from "@/types";
 
 export function StepRecipients({ data }: { data: WizardData; updateData: (d: Partial<WizardData>) => void }) {
   const [search, setSearch] = useState("");
+  const emailCol = data.emailColumn;
   const filtered = (data.csvRows || []).filter((r: Record<string, string>) =>
-    r.email?.toLowerCase().includes(search.toLowerCase()) ||
+    (emailCol && r[emailCol]?.toLowerCase().includes(search.toLowerCase())) ||
     Object.values(r).some(v => v?.toString().toLowerCase().includes(search.toLowerCase()))
   );
 

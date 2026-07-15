@@ -20,6 +20,8 @@ export default function NewCampaign() {
     setLoading(true);
     setError("");
 
+    let campaignId: string | null = null;
+
     try {
       const campRes = await fetch("/api/campaigns", {
         method: "POST",
@@ -35,10 +37,12 @@ export default function NewCampaign() {
       });
       if (!campRes.ok) throw new Error("Failed to create campaign");
       const campaign = await campRes.json();
+      campaignId = campaign.id;
 
+      const emailCol = data.emailColumn;
       const attachmentCol = data.attachmentColumn;
       const recipients = data.csvRows.map((row: Record<string, string>) => ({
-        email: row.email,
+        email: row[emailCol] || "",
         data: row,
         attachment_path: attachmentCol ? (row[attachmentCol] || "") : "",
       }));
@@ -49,12 +53,15 @@ export default function NewCampaign() {
       });
       if (!recRes.ok) throw new Error("Failed to save recipients");
 
-      if (data.globalAttachments?.length > 0) {
+      const validAttachments = (data.globalAttachments || []).filter(
+        (att: { path?: string; name?: string }) => att.path && att.name
+      );
+      if (validAttachments.length > 0) {
         const attRes = await fetch(`/api/campaigns/${campaign.id}/attachments`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
-            attachments: data.globalAttachments.map((att: { path: string; name: string }) => ({
+            attachments: validAttachments.map((att: { path: string; name: string }) => ({
               file_path: att.path,
               original_name: att.name,
               type: "global",
@@ -67,6 +74,9 @@ export default function NewCampaign() {
       sessionStorage.removeItem("mailcraft-wizard-data");
       router.push(`/campaign/${campaign.id}`);
     } catch (err) {
+      if (campaignId) {
+        fetch(`/api/campaigns/${campaignId}`, { method: "DELETE" }).catch(() => {});
+      }
       setError(err instanceof Error ? err.message : "Something went wrong");
       setLoading(false);
     }

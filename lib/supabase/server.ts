@@ -7,7 +7,7 @@ export async function createClient() {
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!,
     {
-      db: { schema: "mailcraft" },
+      db: { schema: "public" },
       cookies: {
         getAll() { return cookieStore.getAll(); },
         setAll(cookiesToSet) {

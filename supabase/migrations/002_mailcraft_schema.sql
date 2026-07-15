@@ -1,5 +1,11 @@
 CREATE SCHEMA IF NOT EXISTS mailcraft;
 
+GRANT USAGE ON SCHEMA mailcraft TO anon, authenticated;
+GRANT ALL ON ALL TABLES IN SCHEMA mailcraft TO anon, authenticated;
+GRANT ALL ON ALL SEQUENCES IN SCHEMA mailcraft TO anon, authenticated;
+ALTER DEFAULT PRIVILEGES IN SCHEMA mailcraft GRANT ALL ON TABLES TO anon, authenticated;
+ALTER DEFAULT PRIVILEGES IN SCHEMA mailcraft GRANT ALL ON SEQUENCES TO anon, authenticated;
+
 SET search_path TO mailcraft;
 
 CREATE TABLE campaigns (

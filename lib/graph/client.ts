@@ -1,9 +1,10 @@
 import { Client } from "@microsoft/microsoft-graph-client";
+import type { SupabaseClient } from "@supabase/supabase-js";
 import { createClient } from "@/lib/supabase/server";
 
-async function getAccessToken(userId: string): Promise<string> {
-  const supabase = await createClient();
-  const { data: token } = await supabase
+async function getAccessToken(userId: string, supabase?: SupabaseClient): Promise<string> {
+  const db = supabase || await createClient();
+  const { data: token } = await db
     .from("microsoft_tokens")
     .select("*")
     .eq("user_id", userId)
@@ -21,7 +22,7 @@ async function getAccessToken(userId: string): Promise<string> {
     });
     const res = await fetch(refreshUrl, { method: "POST", body });
     const data = await res.json();
-    await supabase.from("microsoft_tokens").update({
+    await db.from("microsoft_tokens").update({
       access_token: data.access_token,
       refresh_token: data.refresh_token || token.refresh_token,
       expires_at: new Date(Date.now() + data.expires_in * 1000).toISOString(),
@@ -32,8 +33,8 @@ async function getAccessToken(userId: string): Promise<string> {
   return token.access_token;
 }
 
-export async function createGraphClient(userId: string) {
-  const accessToken = await getAccessToken(userId);
+export async function createGraphClient(userId: string, supabase?: SupabaseClient) {
+  const accessToken = await getAccessToken(userId, supabase);
   return Client.initWithMiddleware({
     authProvider: {
       getAccessToken: async () => accessToken,

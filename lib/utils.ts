@@ -51,3 +51,25 @@ export function parseCSV(text: string): { headers: string[]; rows: Record<string
   });
   return { headers, rows };
 }
+
+export function parseExcel(file: File): Promise<{ headers: string[]; rows: Record<string, string>[]; fileName: string }> {
+  return new Promise(async (resolve, reject) => {
+    const XLSX = await import("xlsx");
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      try {
+        const data = new Uint8Array(e.target?.result as ArrayBuffer);
+        const workbook = XLSX.read(data, { type: "array" });
+        const sheet = workbook.Sheets[workbook.SheetNames[0]];
+        const json = XLSX.utils.sheet_to_json<Record<string, string>>(sheet, { defval: "" });
+        if (json.length === 0) return resolve({ headers: [], rows: [], fileName: file.name });
+        const headers = Object.keys(json[0]);
+        resolve({ headers, rows: json, fileName: file.name });
+      } catch (err) {
+        reject(err);
+      }
+    };
+    reader.onerror = () => reject(new Error("Failed to read file"));
+    reader.readAsArrayBuffer(file);
+  });
+}

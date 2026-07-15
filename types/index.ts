@@ -45,6 +45,7 @@ export interface MicrosoftToken {
   access_token: string;
   refresh_token: string;
   expires_at: string;
+  microsoft_email: string;
 }
 
 export interface CampaignFormData {
@@ -68,4 +69,5 @@ export interface WizardData {
   csvFileName: string;
   globalAttachments: { name: string; path: string }[];
   attachmentColumn: string;
+  emailColumn: string;
 }

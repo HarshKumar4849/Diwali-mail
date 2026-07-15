@@ -1,0 +1,43 @@
+<h2>Color System — Teal Accent</h2>
+<p class="subtitle">Current neutral → Teal primary palette</p>
+
+<div style="display:grid;grid-template-columns:1fr 1fr;gap:1.5rem">
+  <div class="mockup">
+    <div class="mockup-header">🎨 Teal Palette</div>
+    <div class="mockup-body" style="padding:1rem;display:flex;flex-direction:column;gap:0.75rem">
+      <div style="display:flex;align-items:center;gap:0.75rem">
+        <div style="width:48px;height:48px;border-radius:8px;background:oklch(0.55 0.12 190)"></div>
+        <div><strong>Primary</strong><br><span style="color:oklch(0.5 0 0);font-size:0.85rem">oklch(0.55 0.12 190)</span></div>
+      </div>
+      <div style="display:flex;align-items:center;gap:0.75rem">
+        <div style="width:48px;height:48px;border-radius:8px;background:oklch(0.45 0.1 190)"></div>
+        <div><strong>Primary Hover</strong><br><span style="color:oklch(0.5 0 0);font-size:0.85rem">oklch(0.45 0.1 190)</span></div>
+      </div>
+      <div style="display:flex;align-items:center;gap:0.75rem">
+        <div style="width:48px;height:48px;border-radius:8px;background:oklch(0.92 0.02 190)"></div>
+        <div><strong>Primary Subtle (bg)</strong><br><span style="color:oklch(0.5 0 0);font-size:0.85rem">oklch(0.92 0.02 190)</span></div>
+      </div>
+      <div style="display:flex;align-items:center;gap:0.75rem">
+        <div style="width:48px;height:48px;border-radius:8px;background:oklch(0.65 0.15 190)"></div>
+        <div><strong>Accent / Ring</strong><br><span style="color:oklch(0.5 0 0);font-size:0.85rem">oklch(0.65 0.15 190)</span></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="mockup">
+    <div class="mockup-header">📋 Variable Mapping</div>
+    <div class="mockup-body" style="padding:1rem;font-size:0.85rem;display:flex;flex-direction:column;gap:0.5rem">
+      <code>--primary → oklch(0.55 0.12 190)</code><br>
+      <code>--primary-foreground → oklch(1 0 0)</code><br>
+      <code>--ring → oklch(0.65 0.15 190)</code><br>
+      <code>--accent → oklch(0.92 0.02 190)</code><br>
+      <code>--accent-foreground → oklch(0.35 0.06 190)</code><br>
+      <code>--border → oklch(0.85 0.01 190)</code><br>
+      <code>--input → oklch(0.85 0.01 190)</code><br>
+      <code>--muted → oklch(0.95 0.005 190)</code><br>
+      <code>--muted-foreground → oklch(0.6 0.01 190)</code>
+    </div>
+  </div>
+</div>
+
+<p style="margin-top:1rem">Background stays white (<code>oklch(1 0 0)</code>), foreground stays near-black (<code>oklch(0.145 0 0)</code>). Only the primary/accent/border family shifts to teal.</p>

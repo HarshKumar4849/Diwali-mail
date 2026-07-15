@@ -8,7 +8,7 @@ export async function GET() {
 
   const { data } = await supabase
     .from("microsoft_tokens")
-    .select("expires_at")
+    .select("expires_at, microsoft_email")
     .eq("user_id", user.id)
     .maybeSingle();
 
@@ -16,6 +16,6 @@ export async function GET() {
 
   return NextResponse.json({
     connected,
-    email: user.email || "",
+    email: data?.microsoft_email || user.email || "",
   });
 }
