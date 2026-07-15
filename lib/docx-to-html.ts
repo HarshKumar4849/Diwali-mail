@@ -42,8 +42,7 @@ function parseStylesFromPPr(pPr: string): string[] {
   return styles;
 }
 
-function extractTextAndImages(paraXml: string, zip: any, rels: Record<string, string>): Promise<string> {
-  // Extract runs in order
+async function extractParaContent(paraXml: string, zip: any, rels: Record<string, string>): Promise<string> {
   const runRegex = /<w:r[\s>][\s\S]*?<\/w:r>/g;
   const runs: string[] = [];
   let m: RegExpExecArray | null;
@@ -51,8 +50,7 @@ function extractTextAndImages(paraXml: string, zip: any, rels: Record<string, st
     runs.push(m[0]);
   }
 
-  return Promise.all(runs.map(async (runXml) => {
-    // Check for drawing (image)
+  const parts = await Promise.all(runs.map(async (runXml) => {
     if (/<w:drawing[\s>]/.test(runXml)) {
       const embedMatch = runXml.match(/r:embed="([^"]+)"/);
       if (!embedMatch) return "";
@@ -84,12 +82,10 @@ function extractTextAndImages(paraXml: string, zip: any, rels: Record<string, st
       return `<img src="data:${mime};base64,${imageBuffer}" style="${dimStyle}" alt="" />`;
     }
 
-    // Check for text
     const tMatch = runXml.match(/<w:t[^>]*>([^<]*)<\/w:t>/);
     if (!tMatch) return "";
     const text = tMatch[1];
 
-    // Parse run properties for formatting
     const rPrMatch = runXml.match(/<w:rPr[\s>][\s\S]*?<\/w:rPr>/);
     const rPr = rPrMatch ? rPrMatch[0] : "";
     const inlineStyles: string[] = [];
@@ -105,7 +101,69 @@ function extractTextAndImages(paraXml: string, zip: any, rels: Record<string, st
 
     const styleAttr = inlineStyles.length > 0 ? ` style="${inlineStyles.join("; ")}"` : "";
     return `<span${styleAttr}>${escapeHtml(text)}</span>`;
-  })).then(parts => parts.join(""));
+  }));
+
+  return parts.join("");
+}
+
+async function processPara(paraXml: string, zip: any, rels: Record<string, string>): Promise<string> {
+  const pPrMatch = paraXml.match(/<w:pPr[\s>][\s\S]*?<\/w:pPr>/);
+  const pPr = pPrMatch ? pPrMatch[0] : "";
+  const styles = parseStylesFromPPr(pPr);
+  const innerHtml = await extractParaContent(paraXml, zip, rels);
+  if (!innerHtml) return "";
+  const styleAttr = styles.length > 0 ? ` style="${styles.join("; ")}"` : "";
+  return `<p${styleAttr}>${innerHtml}</p>`;
+}
+
+async function processTable(tblXml: string, zip: any, rels: Record<string, string>): Promise<string> {
+  // Check for table width
+  const tblWMatch = tblXml.match(/<w:tblW\s+w:w="(\d+)"\s+w:type="([^"]+)"/);
+  let tableStyle = "";
+  if (tblWMatch && tblWMatch[2] === "dxa") {
+    tableStyle = ` style="width: ${twipToPt(tblWMatch[1])}"`;
+  }
+
+  const rowRegex = /<w:tr[\s>][\s\S]*?<\/w:tr>/g;
+  const rows: string[] = [];
+  let m: RegExpExecArray | null;
+  while ((m = rowRegex.exec(tblXml)) !== null) {
+    rows.push(m[0]);
+  }
+
+  const rowHtmls = await Promise.all(rows.map(async (rowXml) => {
+    const cellRegex = /<w:tc[\s>][\s\S]*?<\/w:tc>/g;
+    const cells: string[] = [];
+    let cm: RegExpExecArray | null;
+    while ((cm = cellRegex.exec(rowXml)) !== null) {
+      cells.push(cm[0]);
+    }
+
+    const cellHtmls = await Promise.all(cells.map(async (cellXml) => {
+      // Cell width
+      const tcWMatch = cellXml.match(/<w:tcW\s+w:w="(\d+)"/);
+      let cellStyle = "";
+      if (tcWMatch) {
+        cellStyle = ` style="width: ${twipToPt(tcWMatch[1])}; vertical-align: top"`;
+      }
+
+      // Colspan
+      let colspan = "";
+      const gridSpan = cellXml.match(/<w:gridSpan\s+w:val="(\d+)"/);
+      if (gridSpan && gridSpan[1] !== "1") colspan = ` colspan="${gridSpan[1]}"`;
+
+      // Process paragraphs inside cell
+      const cellParas = cellXml.match(/<w:p[\s>][\s\S]*?<\/w:p>/g) || [];
+      const cellContent = await Promise.all(cellParas.map(p => processPara(p, zip, rels)));
+      const inner = cellContent.filter(c => c).join("\n");
+
+      return `    <td${colspan}${cellStyle}>\n${inner}\n    </td>`;
+    }));
+
+    return `  <tr>\n${cellHtmls.join("\n")}\n  </tr>`;
+  }));
+
+  return `<table${tableStyle}>\n${rowHtmls.join("\n")}\n</table>`;
 }
 
 export async function docxToHtml(file: File): Promise<string> {
@@ -128,27 +186,25 @@ export async function docxToHtml(file: File): Promise<string> {
     }
   }
 
-  // Extract paragraphs using regex (avoids DOMParser namespace issues)
-  const paraRegex = /<w:p[\s>][\s\S]*?<\/w:p>/g;
-  const paraXmls: string[] = [];
+  // Extract body content
+  const bodyMatch = docXmlStr.match(/<w:body>([\s\S]*)<\/w:body>/);
+  if (!bodyMatch) throw new Error("Invalid docx: missing body");
+  const bodyXml = bodyMatch[1];
+
+  // Match both paragraphs and tables in document order
+  const blockRegex = /<w:p[\s>][\s\S]*?<\/w:p>|<w:tbl[\s>][\s\S]*?<\/w:tbl>/g;
+  const blocks: string[] = [];
   let m: RegExpExecArray | null;
-  while ((m = paraRegex.exec(docXmlStr)) !== null) {
-    paraXmls.push(m[0]);
+  while ((m = blockRegex.exec(bodyXml)) !== null) {
+    blocks.push(m[0]);
   }
 
   const parts: string[] = [];
-
-  for (const paraXml of paraXmls) {
-    // Extract paragraph properties
-    const pPrMatch = paraXml.match(/<w:pPr[\s>][\s\S]*?<\/w:pPr>/);
-    const pPr = pPrMatch ? pPrMatch[0] : "";
-    const styles = parseStylesFromPPr(pPr);
-
-    const innerHtml = await extractTextAndImages(paraXml, zip, rels);
-
-    if (innerHtml) {
-      const styleAttr = styles.length > 0 ? ` style="${styles.join("; ")}"` : "";
-      parts.push(`<p${styleAttr}>${innerHtml}</p>`);
+  for (const block of blocks) {
+    if (block.startsWith("<w:tbl")) {
+      parts.push(await processTable(block, zip, rels));
+    } else {
+      parts.push(await processPara(block, zip, rels));
     }
   }
 
@@ -159,7 +215,7 @@ export async function docxToHtml(file: File): Promise<string> {
       const hfXml = await zip.files[path].async("string");
       const hfParas = hfXml.match(/<w:p[\s>][\s\S]*?<\/w:p>/g) || [];
       for (const paraXml of hfParas) {
-        const innerHtml = await extractTextAndImages(paraXml, zip, rels);
+        const innerHtml = await extractParaContent(paraXml, zip, rels);
         if (innerHtml) hfParts.push(innerHtml);
       }
     }
