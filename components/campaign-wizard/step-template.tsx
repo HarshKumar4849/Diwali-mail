@@ -186,14 +186,14 @@ export function StepTemplate({ data, updateData }: { data: WizardData; updateDat
           <div className="min-w-0">
             <span className="text-xs text-muted-foreground font-medium">Template (with placeholders):</span>
             <p className="font-semibold mt-0.5 break-words" dangerouslySetInnerHTML={{ __html: highlightPlaceholders(data.subject_template || "") }} />
-            <div className="mt-0.5 whitespace-pre-wrap text-sm break-words overflow-x-auto" dangerouslySetInnerHTML={{ __html: highlightPlaceholders(bodyIsHtml ? data.body_template : data.body_template?.replace(/\n/g, "<br>") || "") }} />
+            <div className="mt-0.5 whitespace-pre-wrap text-sm break-words overflow-x-auto [&_p]:my-1 [&_p:empty]:hidden" dangerouslySetInnerHTML={{ __html: highlightPlaceholders(bodyIsHtml ? data.body_template : data.body_template?.replace(/\n/g, "<br>") || "") }} />
           </div>
           <hr className="border-muted" />
           <div className="min-w-0">
             <span className="text-xs text-muted-foreground font-medium">Rendered Preview (using first row):</span>
             <p className="text-xs text-muted-foreground mt-1">Showing data for: {Object.values(sampleData).filter(v => !v.startsWith('{{')).join(', ') || '(no data)'}</p>
             <p className="font-semibold mt-1 break-words">{renderTemplate(data.subject_template || "", sampleData)}</p>
-            <div className="mt-0.5 text-sm overflow-x-auto break-words" dangerouslySetInnerHTML={{ __html: renderTemplate(data.body_template || "", sampleData) }} />
+            <div className="mt-0.5 text-sm overflow-x-auto break-words [&_p]:my-1 [&_p:empty]:hidden" dangerouslySetInnerHTML={{ __html: renderTemplate(data.body_template || "", sampleData) }} />
           </div>
         </div>
       )}
