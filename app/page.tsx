@@ -16,9 +16,9 @@ export default function Dashboard() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const router = useRouter();
-  const supabase = createClient();
 
   useEffect(() => {
+    const supabase = createClient();
     supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session);
       setLoading(false);
