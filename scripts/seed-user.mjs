@@ -35,8 +35,8 @@ if (!email || !password) {
   process.exit(0);
 }
 
-if (!supabaseUrl || !serviceRoleKey) {
-  console.error("Supabase env vars not set — skipping user seed");
+if (!supabaseUrl || !supabaseUrl.match(/^https?:\/\//i) || !serviceRoleKey) {
+  console.error("Supabase env vars not set or invalid — skipping user seed");
   process.exit(0);
 }
 
