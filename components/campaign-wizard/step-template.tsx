@@ -27,39 +27,7 @@ export function StepTemplate({ data, updateData }: { data: WizardData; updateDat
   const handleDocx = async (file: File) => {
     setConverting(true);
     try {
-      let html = await docxToHtml(file);
-
-      // Upload base64 images to Supabase Storage (Gmail doesn't render base64 images)
-      const supabase = createClient();
-      const imgRegex = /<img\s+src="data:([^;]+);base64,([^"]+)"([^>]*)>/g;
-      let match: RegExpExecArray | null;
-      const uploads: Promise<void>[] = [];
-
-      while ((match = imgRegex.exec(html)) !== null) {
-        const fullTag = match[0];
-        const mime = match[1];
-        const b64 = match[2];
-        const rest = match[3];
-        const ext = mime.split("/").pop() || "png";
-        const raw = atob(b64);
-        const bytes = new Uint8Array(raw.length);
-        for (let i = 0; i < raw.length; i++) bytes[i] = raw.charCodeAt(i);
-        const blob = new Blob([bytes], { type: mime });
-        const filePath = `docx-images/${crypto.randomUUID()}.${ext}`;
-
-        uploads.push(
-          supabase.storage.from("mailcraft").upload(filePath, blob, {
-            contentType: mime,
-            upsert: false,
-          }).then(({ error }) => {
-            if (error) throw error;
-            const { data: { publicUrl } } = supabase.storage.from("mailcraft").getPublicUrl(filePath);
-            html = html.replace(fullTag, `<img src="${publicUrl}"${rest}>`);
-          })
-        );
-      }
-
-      await Promise.all(uploads);
+      const html = await docxToHtml(file);
       updateData({ body_template: html });
     } catch (err) {
       console.error("Failed to convert .docx:", err);

@@ -56,11 +56,43 @@ export async function sendEmail({ campaign, recipient, globalAttachments, supaba
   const graphClient = await createGraphClient(campaign.user_id, supabase);
 
   const subject = renderTemplate(campaign.subject_template, recipient.data);
-  const body = renderTemplate(campaign.body_template, recipient.data);
+  let body = renderTemplate(campaign.body_template, recipient.data);
+  body = body.replace(/\n/g, "<br>");
+
+  // Convert base64 images to hosted URLs (Gmail doesn't render base64 images)
+  const db = supabase || await createClient();
+  const imgRegex = /<img\s+src="data:image\/([^;]+);base64,([^"]+)"([^>]*)>/g;
+  let imgMatch: RegExpExecArray | null;
+  const imageUploads: Promise<void>[] = [];
+
+  while ((imgMatch = imgRegex.exec(body)) !== null) {
+    const fullTag = imgMatch[0];
+    const ext = imgMatch[1];
+    const b64 = imgMatch[2];
+    const restAttrs = imgMatch[3];
+    const raw = Buffer.from(b64, "base64");
+    const filePath = `email-images/${crypto.randomUUID()}.${ext}`;
+
+    imageUploads.push(
+      db.storage.from("mailcraft").upload(filePath, raw, {
+        contentType: `image/${ext}`,
+        upsert: false,
+      }).then(({ error }) => {
+        if (error) throw new Error(`Failed to upload image: ${error.message}`);
+        const { data: { publicUrl } } = db.storage.from("mailcraft").getPublicUrl(filePath);
+        body = body.replace(fullTag, `<img src="${publicUrl}"${restAttrs}>`);
+      })
+    );
+  }
+
+  await Promise.all(imageUploads);
+  if (imageUploads.length > 0) {
+    console.log(`[sendEmail] Uploaded ${imageUploads.length} inline image(s) for ${recipient.email}`);
+  }
 
   const message: Record<string, unknown> = {
     subject,
-    body: { contentType: "HTML", content: body.replace(/\n/g, "<br>") },
+    body: { contentType: "HTML", content: body },
     toRecipients: [{ emailAddress: { address: recipient.email } }],
   };
 
