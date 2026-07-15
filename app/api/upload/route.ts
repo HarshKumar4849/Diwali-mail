@@ -12,9 +12,9 @@ export async function POST(req: NextRequest) {
 
   const ext = file.name.split(".").pop();
   const path = `${user.id}/${crypto.randomUUID()}.${ext}`;
-  const { error } = await supabase.storage.from("attachments").upload(path, file);
+  const { error } = await supabase.storage.from("mailcraft").upload(path, file);
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 
-  const { data: urlData } = supabase.storage.from("attachments").getPublicUrl(path);
+  const { data: urlData } = supabase.storage.from("mailcraft").getPublicUrl(path);
   return NextResponse.json({ path, url: urlData.publicUrl, originalName: file.name });
 }

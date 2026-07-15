@@ -16,8 +16,8 @@ export function StepAttachments({ data, updateData }: { data: WizardData; update
       const res = await fetch("/api/upload", { method: "POST", body: formData });
       const result = await res.json();
       if (!res.ok) throw new Error(result.error || "Upload failed");
-      if (!result.url) throw new Error("Upload response missing URL");
-      const newFiles = [...globalFiles, { name: result.originalName, path: result.url }];
+      if (!result.path) throw new Error("Upload response missing path");
+      const newFiles = [...globalFiles, { name: result.originalName, path: result.path }];
       setGlobalFiles(newFiles);
       updateData({ globalAttachments: newFiles });
     } catch (err) {

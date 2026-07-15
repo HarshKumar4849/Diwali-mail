@@ -69,7 +69,32 @@ export default function CampaignDetail() {
       })
       .subscribe();
     return () => { supabase.removeChannel(channel); };
-  }, [id]);
+  }, [id, supabase]);
+
+  useEffect(() => {
+    if (!campaign || campaign.status !== "sending") return;
+    const interval = setInterval(async () => {
+      try {
+        const [campRes, recRes] = await Promise.all([
+          fetch(`/api/campaigns/${id}`),
+          fetch(`/api/campaigns/${id}/recipients`),
+        ]);
+        if (campRes.ok) {
+          const updatedCampaign = await campRes.json();
+          setCampaign(updatedCampaign);
+          if (updatedCampaign.status === "done") {
+            toast.success("Campaign complete");
+          } else if (updatedCampaign.status === "partial") {
+            toast.warning("Campaign sent with some failures");
+          }
+        }
+        if (recRes.ok) {
+          setRecipients(await recRes.json());
+        }
+      } catch {}
+    }, 3000);
+    return () => clearInterval(interval);
+  }, [id, campaign?.status]);
 
   const handleSend = async () => {
     setSending(true);

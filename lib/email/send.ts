@@ -16,7 +16,7 @@ async function downloadAttachment(path: string, name: string, supabase?: Supabas
     if (!res.ok) throw new Error(`Failed to download attachment: HTTP ${res.status}`);
     buffer = await res.arrayBuffer();
   } else {
-    const { data, error } = await db.storage.from("attachments").download(path);
+    const { data, error } = await db.storage.from("mailcraft").download(path);
     if (error || !data) throw new Error(`Failed to download attachment: ${error?.message}`);
     buffer = await data.arrayBuffer();
   }
