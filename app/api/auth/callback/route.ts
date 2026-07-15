@@ -7,7 +7,10 @@ export async function GET(req: NextRequest) {
   const returnedState = req.nextUrl.searchParams.get("state");
   const settingsUrl = new URL("/settings", baseUrl);
   if (!code) {
-    settingsUrl.searchParams.set("error", "No authorization code from Microsoft");
+    const err = req.nextUrl.searchParams.get("error") || "No authorization code from Microsoft";
+    const desc = req.nextUrl.searchParams.get("error_description") || "";
+    console.error("Microsoft OAuth error:", err, desc);
+    settingsUrl.searchParams.set("error", `${err}${desc ? `: ${desc}` : ""}`);
     return NextResponse.redirect(settingsUrl);
   }
 
@@ -17,6 +20,8 @@ export async function GET(req: NextRequest) {
     return NextResponse.redirect(settingsUrl);
   }
 
+  const codeVerifier = req.cookies.get("microsoft_code_verifier")?.value;
+
   const tokenUrl = "https://login.microsoftonline.com/common/oauth2/v2.0/token";
   const body = new URLSearchParams({
     client_id: process.env.MICROSOFT_CLIENT_ID!,
@@ -25,6 +30,7 @@ export async function GET(req: NextRequest) {
     redirect_uri: `${baseUrl}/api/auth/callback`,
     grant_type: "authorization_code",
   });
+  if (codeVerifier) body.set("code_verifier", codeVerifier);
 
   const tokenRes = await fetch(tokenUrl, { method: "POST", body });
   const tokenData = await tokenRes.json();
@@ -69,5 +75,6 @@ export async function GET(req: NextRequest) {
 
   const response = NextResponse.redirect(settingsUrl);
   response.cookies.set("microsoft_oauth_state", "", { maxAge: 0, path: "/api/auth/callback" });
+  response.cookies.set("microsoft_code_verifier", "", { maxAge: 0, path: "/api/auth/callback" });
   return response;
 }
