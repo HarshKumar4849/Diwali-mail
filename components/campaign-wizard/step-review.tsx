@@ -38,12 +38,12 @@ export function StepReview({ data }: { data: WizardData; updateData: (d: Partial
           ) : connected ? (
             <span className="text-xs text-green-600">Connected as {email}</span>
           ) : (
-            <a
-              href="/api/auth/microsoft"
-              className="text-xs text-primary underline hover:text-primary/80"
-            >
-              Connect Outlook
-            </a>
+            <span className="text-xs text-muted-foreground">
+              Not connected —{" "}
+              <a href="/settings" className="text-primary underline hover:text-primary/80">
+                connect via Settings
+              </a>
+            </span>
           )}
         </div>
       </div>

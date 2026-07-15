@@ -64,9 +64,6 @@ export default function NewCampaign() {
         if (!attRes.ok) throw new Error("Failed to save attachments");
       }
 
-      const sendRes = await fetch(`/api/campaigns/${campaign.id}/send`, { method: "POST" });
-      if (!sendRes.ok) throw new Error("Failed to start sending");
-
       sessionStorage.removeItem("mailcraft-wizard-data");
       router.push(`/campaign/${campaign.id}`);
     } catch (err) {

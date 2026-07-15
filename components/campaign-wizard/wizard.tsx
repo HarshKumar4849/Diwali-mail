@@ -58,7 +58,7 @@ export function Wizard({ steps, onComplete, loading }: { steps: WizardStep[]; on
       <div className="flex justify-between">
         <Button variant="outline" onClick={prev} disabled={currentStep === 0 || loading}>Back</Button>
         <Button onClick={next} disabled={loading}>
-          {loading ? "Saving & Sending..." : currentStep < steps.length - 1 ? "Next" : "Review & Send"}
+          {loading ? "Saving..." : currentStep < steps.length - 1 ? "Next" : "Save Campaign"}
         </Button>
       </div>
     </div>
