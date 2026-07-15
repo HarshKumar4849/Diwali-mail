@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { getAppUrl } from "@/lib/url";
 import { sendEmail } from "@/lib/email/send";
 
 function delay(ms: number) {
@@ -116,8 +117,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   const remaining = remainingCount ?? 0;
 
   if (remaining > 0) {
-    const appUrl = process.env.NEXT_PUBLIC_APP_URL || `http://${req.headers.get("host") || "localhost:3000"}`;
-    fetch(`${appUrl}/api/campaigns/${id}/process-batch`, {
+    fetch(`${getAppUrl(req)}/api/campaigns/${id}/process-batch`, {
       method: "POST",
       headers: { "x-internal-token": process.env.SUPABASE_SECRET_KEY || "" },
     }).catch(err => console.error(`[process-batch] Campaign ${id}: next-batch trigger failed:`, err));

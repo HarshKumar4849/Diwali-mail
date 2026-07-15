@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
+import { getAppUrl } from "@/lib/url";
 
 export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const supabase = await createClient();
@@ -29,8 +30,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
 
   await supabase.from("campaigns").update({ status: "sending" }).eq("id", id);
 
-  const appUrl = process.env.NEXT_PUBLIC_APP_URL || `http://${req.headers.get("host") || "localhost:3000"}`;
-  fetch(`${appUrl}/api/campaigns/${id}/process-batch`, {
+  fetch(`${getAppUrl(req)}/api/campaigns/${id}/process-batch`, {
     method: "POST",
     headers: { "x-internal-token": process.env.SUPABASE_SECRET_KEY || "" },
   }).catch(err => console.error(`[retry] Campaign ${id}: initial batch trigger failed:`, err));
