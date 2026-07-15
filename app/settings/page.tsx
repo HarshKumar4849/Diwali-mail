@@ -1,6 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
+
+export const dynamic = "force-dynamic";
 import { createClient } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -12,7 +14,6 @@ function SettingsInner() {
   const [email, setEmail] = useState("");
   const searchParams = useSearchParams();
   const error = searchParams.get("error");
-  const supabase = createClient();
 
   useEffect(() => {
     fetch("/api/auth/microsoft/status")
@@ -28,6 +29,7 @@ function SettingsInner() {
   };
 
   const handleDisconnect = async () => {
+    const supabase = createClient();
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return;
     await supabase.from("microsoft_tokens").delete().eq("user_id", user.id);
