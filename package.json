@@ -6,6 +6,8 @@
     "dev": "next dev --webpack",
     "build": "next build --webpack",
     "start": "next start",
+    "seed": "node scripts/seed-user.mjs",
+    "vercel-build": "next build --webpack && node scripts/seed-user.mjs",
     "lint": "eslint"
   },
   "dependencies": {
