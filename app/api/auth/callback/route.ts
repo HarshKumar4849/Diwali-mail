@@ -4,11 +4,16 @@ import { createClient } from "@/lib/supabase/server";
 export async function GET(req: NextRequest) {
   const code = req.nextUrl.searchParams.get("code");
   const returnedState = req.nextUrl.searchParams.get("state");
-  if (!code) return NextResponse.json({ error: "No code provided" }, { status: 400 });
+  const settingsUrl = new URL("/settings", process.env.NEXT_PUBLIC_APP_URL);
+  if (!code) {
+    settingsUrl.searchParams.set("error", "No authorization code from Microsoft");
+    return NextResponse.redirect(settingsUrl);
+  }
 
   const storedState = req.cookies.get("microsoft_oauth_state")?.value;
   if (!returnedState || !storedState || returnedState !== storedState) {
-    return NextResponse.json({ error: "Invalid state parameter" }, { status: 403 });
+    settingsUrl.searchParams.set("error", "OAuth state mismatch — try again");
+    return NextResponse.redirect(settingsUrl);
   }
 
   const tokenUrl = "https://login.microsoftonline.com/common/oauth2/v2.0/token";
@@ -24,22 +29,32 @@ export async function GET(req: NextRequest) {
   const tokenData = await tokenRes.json();
 
   if (!tokenRes.ok) {
-    return NextResponse.json({ error: tokenData.error_description }, { status: 400 });
+    settingsUrl.searchParams.set("error", tokenData.error_description || "Microsoft token exchange failed");
+    return NextResponse.redirect(settingsUrl);
   }
 
   const expiresAt = new Date(Date.now() + tokenData.expires_in * 1000).toISOString();
   const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
+  const { data: { user }, error: userError } = await supabase.auth.getUser();
 
-  await supabase.from("microsoft_tokens").upsert({
+  if (userError || !user) {
+    settingsUrl.searchParams.set("error", "Not signed in — please log in and try again");
+    return NextResponse.redirect(settingsUrl);
+  }
+
+  const { error: upsertError } = await supabase.from("microsoft_tokens").upsert({
     user_id: user.id,
     access_token: tokenData.access_token,
     refresh_token: tokenData.refresh_token,
     expires_at: expiresAt,
   }, { onConflict: "user_id" });
 
-  const response = NextResponse.redirect(`${process.env.NEXT_PUBLIC_APP_URL}/settings`);
+  if (upsertError) {
+    settingsUrl.searchParams.set("error", `Failed to save token: ${upsertError.message}`);
+    return NextResponse.redirect(settingsUrl);
+  }
+
+  const response = NextResponse.redirect(settingsUrl);
   response.cookies.set("microsoft_oauth_state", "", { maxAge: 0, path: "/api/auth/callback" });
   return response;
 }

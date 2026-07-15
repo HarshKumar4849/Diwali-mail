@@ -4,10 +4,14 @@ import { useEffect, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { useSearchParams } from "next/navigation";
+import { Suspense } from "react";
 
-export default function Settings() {
+function SettingsInner() {
   const [connected, setConnected] = useState(false);
   const [email, setEmail] = useState("");
+  const searchParams = useSearchParams();
+  const error = searchParams.get("error");
   const supabase = createClient();
 
   useEffect(() => {
@@ -33,6 +37,11 @@ export default function Settings() {
   return (
     <div className="container mx-auto p-6 max-w-2xl">
       <h1 className="text-3xl font-bold mb-6">Settings</h1>
+      {error && (
+        <div className="mb-4 p-3 bg-destructive/10 border border-destructive/20 text-destructive text-sm rounded">
+          {error}
+        </div>
+      )}
       <Card>
         <CardHeader>
           <CardTitle>Microsoft Outlook</CardTitle>
@@ -49,5 +58,13 @@ export default function Settings() {
         </CardContent>
       </Card>
     </div>
+  );
+}
+
+export default function Settings() {
+  return (
+    <Suspense>
+      <SettingsInner />
+    </Suspense>
   );
 }

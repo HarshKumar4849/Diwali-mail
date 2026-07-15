@@ -6,13 +6,16 @@ export async function GET() {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-  const { count } = await supabase
+  const { data } = await supabase
     .from("microsoft_tokens")
-    .select("*", { count: "exact", head: true })
-    .eq("user_id", user.id);
+    .select("expires_at")
+    .eq("user_id", user.id)
+    .maybeSingle();
+
+  const connected = !!data && new Date(data.expires_at) > new Date();
 
   return NextResponse.json({
-    connected: (count || 0) > 0,
+    connected,
     email: user.email || "",
   });
 }
