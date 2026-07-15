@@ -92,6 +92,18 @@ function parseRunContent(run: Element): string {
   return `<span${styleAttr}>${escapeHtml(text)}</span>`;
 }
 
+function getAllDescendants(root: Element): Element[] {
+  const result: Element[] = [];
+  function walk(node: Element) {
+    for (const child of node.children) {
+      result.push(child);
+      walk(child);
+    }
+  }
+  walk(root);
+  return result;
+}
+
 function emuToPx(emu: string): number {
   const val = parseInt(emu, 10);
   if (isNaN(val)) return 0;
@@ -103,32 +115,36 @@ async function extractImage(
   zip: JSZip,
   rels: Record<string, string>
 ): Promise<string> {
-  // Search parent and all descendants for r:embed attribute
-  const allElements = [parent, ...parent.querySelectorAll("*")];
+  const allElements = getAllDescendants(parent);
+  allElements.unshift(parent);
 
   let embedId = "";
   let cx = "0";
   let cy = "0";
 
   for (const el of allElements) {
-    embedId = el.getAttribute("r:embed") || el.getAttribute("embed") || "";
-    if (embedId) {
-      const extent = findDescendant(el, "extent");
-      if (extent) {
-        cx = extent.getAttribute("cx") || "0";
-        cy = extent.getAttribute("cy") || "0";
-      }
-      break;
-    }
+    embedId = el.getAttribute("r:embed") || el.getAttribute("r:id")
+           || el.getAttribute("embed") || el.getAttribute("id") || "";
+    if (embedId) break;
   }
 
   if (!embedId) return "";
 
-  const imagePath = rels[embedId];
-  if (!imagePath) return "";
+  const rawTarget = rels[embedId];
+  if (!rawTarget) return "";
+
+  // Resolve path: rels targets are relative to word/
+  const imagePath = rawTarget.startsWith("word/") ? rawTarget : "word/" + rawTarget;
 
   const imageFile = zip.file(imagePath);
   if (!imageFile) return "";
+
+  // Get dimensions from the drawing extent
+  const extent = findDescendant(parent, "extent");
+  if (extent) {
+    cx = extent.getAttribute("cx") || "0";
+    cy = extent.getAttribute("cy") || "0";
+  }
 
   const imageBuffer = await imageFile.async("base64");
   const ext = imagePath.split(".").pop()?.toLowerCase() || "png";
