@@ -20,12 +20,7 @@ export default function Login() {
     setError("");
     const { error: authError } = await supabase.auth.signInWithPassword({ email, password });
     if (authError) {
-      const { error: signUpError } = await supabase.auth.signUp({ email, password });
-      if (signUpError) {
-        setError(signUpError.message);
-      } else {
-        setError("Account created! Check your email to confirm, or try logging in again.");
-      }
+      setError(authError.message);
     } else {
       router.push("/");
     }
@@ -40,7 +35,7 @@ export default function Login() {
         <Input type="email" placeholder="Email" value={email} onChange={e => setEmail(e.target.value)} required />
         <Input type="password" placeholder="Password" value={password} onChange={e => setPassword(e.target.value)} required />
         {error && <p className="text-sm text-red-500">{error}</p>}
-        <Button type="submit" className="w-full" disabled={loading}>{loading ? "Loading..." : "Sign In / Sign Up"}</Button>
+        <Button type="submit" className="w-full" disabled={loading}>{loading ? "Loading..." : "Sign In"}</Button>
       </form>
     </div>
   );
