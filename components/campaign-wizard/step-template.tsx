@@ -7,7 +7,7 @@ import { PlaceholderAutocomplete } from "@/components/placeholder-autocomplete";
 
 function highlightPlaceholders(text: string): string {
   return text.replace(
-    /\{\{(\w+)\}\}/g,
+    /\{\{(.+?)\}\}/g,
     '<span class="bg-primary/20 text-primary rounded px-1 font-medium">{{$1}}</span>'
   );
 }
