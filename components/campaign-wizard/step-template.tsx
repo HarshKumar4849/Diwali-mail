@@ -26,9 +26,82 @@ export function StepTemplate({ data, updateData }: { data: WizardData; updateDat
     setConverting(true);
     try {
       const mammoth = await import("mammoth");
+
+      let fmtCounter = 0;
+      const fmtStyles: Record<string, string> = {};
+
+      interface MammothParagraph {
+        type: string;
+        children: MammothParagraph[];
+        styleId: string | null;
+        styleName: string | null;
+        numbering: unknown;
+        alignment: string | null;
+        indent: {
+          start: string | null;
+          end: string | null;
+          firstLine: string | null;
+          hanging: string | null;
+        };
+      }
+
+      const transformParagraph = (element: MammothParagraph) => {
+        const styles: string[] = [];
+
+        if (element.alignment && element.alignment !== "left") {
+          styles.push(`text-align: ${element.alignment}`);
+        }
+
+        if (element.indent) {
+          if (element.indent.start) {
+            styles.push(`margin-left: ${element.indent.start}pt`);
+          }
+          if (element.indent.firstLine) {
+            styles.push(`text-indent: ${element.indent.firstLine}pt`);
+          }
+          if (element.indent.hanging) {
+            styles.push(`text-indent: -${element.indent.hanging}pt`);
+          }
+        }
+
+        if (styles.length > 0) {
+          const key = styles.join("; ");
+          if (!fmtStyles[key]) {
+            fmtCounter++;
+            fmtStyles[key] = `fmt-${fmtCounter}`;
+          }
+          return { ...element, styleName: fmtStyles[key] };
+        }
+        return element;
+      };
+
       const buffer = await file.arrayBuffer();
-      const result = await mammoth.convertToHtml({ arrayBuffer: buffer });
-      updateData({ body_template: result.value });
+      const result = await mammoth.convertToHtml(
+        { arrayBuffer: buffer },
+        {
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          transformDocument: (mammoth as any).transforms.paragraph(transformParagraph),
+          ignoreEmptyParagraphs: false,
+        }
+      );
+
+      const parser = new DOMParser();
+      const doc = parser.parseFromString(result.value, "text/html");
+      const reverseMap: Record<string, string> = {};
+      for (const [style, cls] of Object.entries(fmtStyles)) {
+        reverseMap[cls] = style;
+      }
+
+      doc.querySelectorAll("[class]").forEach((el) => {
+        const classes = el.getAttribute("class")?.split(" ") || [];
+        const fmtClass = classes.find((c) => c.startsWith("fmt-"));
+        if (fmtClass && reverseMap[fmtClass]) {
+          el.removeAttribute("class");
+          el.setAttribute("style", reverseMap[fmtClass]);
+        }
+      });
+
+      updateData({ body_template: doc.body.innerHTML });
     } catch (err) {
       console.error("Failed to convert .docx:", err);
       alert("Failed to convert the Word document. Make sure it's a valid .docx file.");
