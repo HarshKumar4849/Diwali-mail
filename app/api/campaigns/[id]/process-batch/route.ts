@@ -122,6 +122,15 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
       headers: { "x-internal-token": process.env.SUPABASE_SECRET_KEY || "" },
     }).catch(err => console.error(`[process-batch] Campaign ${id}: next-batch trigger failed:`, err));
     console.log(`[process-batch] Campaign ${id}: scheduled next batch (${remaining} pending remaining)`);
+  } else {
+    const { count } = await supabase
+      .from("recipients")
+      .select("*", { count: "exact", head: true })
+      .eq("campaign_id", id)
+      .eq("status", "failed");
+    const newStatus = count && count > 0 ? "partial" : "done";
+    await supabase.from("campaigns").update({ status: newStatus }).eq("id", id);
+    console.log(`[process-batch] Campaign ${id}: all done, status → ${newStatus}`);
   }
 
   return NextResponse.json({ processed: pending.length, sent, failed });
