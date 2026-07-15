@@ -11,9 +11,17 @@ export function StepAttachments({ data, updateData }: { data: WizardData; update
   const uploadFile = async (file: File) => {
     setUploading(true);
     try {
-      const formData = new FormData();
-      formData.append("file", file);
-      const res = await fetch("/api/upload", { method: "POST", body: formData });
+      const buffer = await file.arrayBuffer();
+      const bytes = new Uint8Array(buffer);
+      let binary = "";
+      for (let i = 0; i < bytes.length; i++) binary += String.fromCharCode(bytes[i]);
+      const base64 = btoa(binary);
+
+      const res = await fetch("/api/upload", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name: file.name, base64 }),
+      });
       const result = await res.json();
       if (!res.ok) throw new Error(result.error || "Upload failed");
       if (!result.path) throw new Error("Upload response missing path");

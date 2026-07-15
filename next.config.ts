@@ -1,7 +1,13 @@
 import type { NextConfig } from "next";
 import withSerwist from "@serwist/next";
 
-const config: NextConfig = {};
+const config: NextConfig = {
+  experimental: {
+    serverActions: {
+      bodySizeLimit: "15mb",
+    },
+  },
+};
 
 export default withSerwist({
   swSrc: "sw.ts",
