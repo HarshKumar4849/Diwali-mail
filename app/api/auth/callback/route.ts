@@ -2,9 +2,10 @@ import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 
 export async function GET(req: NextRequest) {
+  const baseUrl = (process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000").replace(/\/+$/, "");
   const code = req.nextUrl.searchParams.get("code");
   const returnedState = req.nextUrl.searchParams.get("state");
-  const settingsUrl = new URL("/settings", process.env.NEXT_PUBLIC_APP_URL);
+  const settingsUrl = new URL("/settings", baseUrl);
   if (!code) {
     settingsUrl.searchParams.set("error", "No authorization code from Microsoft");
     return NextResponse.redirect(settingsUrl);
@@ -21,7 +22,7 @@ export async function GET(req: NextRequest) {
     client_id: process.env.MICROSOFT_CLIENT_ID!,
     client_secret: process.env.MICROSOFT_CLIENT_SECRET!,
     code,
-    redirect_uri: `${process.env.NEXT_PUBLIC_APP_URL}/api/auth/callback`,
+    redirect_uri: `${baseUrl}/api/auth/callback`,
     grant_type: "authorization_code",
   });
 

@@ -8,7 +8,8 @@ export async function GET() {
 
   const state = crypto.randomUUID();
   const clientId = process.env.MICROSOFT_CLIENT_ID!;
-  const redirectUri = `${process.env.NEXT_PUBLIC_APP_URL}/api/auth/callback`;
+  const baseUrl = (process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000").replace(/\/+$/, "");
+  const redirectUri = `${baseUrl}/api/auth/callback`;
   const scope = "Mail.Send offline_access User.Read";
   const url = `https://login.microsoftonline.com/common/oauth2/v2.0/authorize?client_id=${clientId}&response_type=code&redirect_uri=${encodeURIComponent(redirectUri)}&scope=${encodeURIComponent(scope)}&state=${encodeURIComponent(state)}`;
 
