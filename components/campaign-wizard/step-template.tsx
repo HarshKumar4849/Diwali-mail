@@ -5,7 +5,6 @@ import { renderTemplate } from "@/lib/email/template";
 import type { WizardData } from "@/types";
 import { PlaceholderAutocomplete } from "@/components/placeholder-autocomplete";
 import { docxToHtml } from "@/lib/docx-to-html";
-import { createClient } from "@/lib/supabase/client";
 
 function highlightPlaceholders(text: string): string {
   return text.replace(
