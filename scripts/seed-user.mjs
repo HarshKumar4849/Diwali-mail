@@ -48,7 +48,7 @@ const { data, error } = await supabase.auth.admin.createUser({
   email_confirm: true,
 });
 
-if (error?.message?.includes("already exists") || error?.message?.includes("User already registered")) {
+if (error?.message?.includes("already exists") || error?.message?.includes("already been registered") || error?.message?.includes("User already registered")) {
   const { data: list, error: listError } = await supabase.auth.admin.listUsers();
   if (listError) {
     console.error("Failed to list users:", listError.message);
