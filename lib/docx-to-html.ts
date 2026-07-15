@@ -1,9 +1,3 @@
-import type JSZip from "jszip";
-
-function escapeHtml(text: string): string {
-  return text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
-}
-
 function findChild(parent: Element, localName: string): Element | null {
   for (const child of parent.children) {
     if (child.localName === localName) return child;
@@ -19,223 +13,196 @@ function findAllChildren(parent: Element, localName: string): Element[] {
   return result;
 }
 
-function findDescendant(parent: Element, localName: string): Element | null {
-  for (const child of parent.children) {
-    if (child.localName === localName) return child;
-    const found = findDescendant(child, localName);
-    if (found) return found;
-  }
-  return null;
+interface ParaStyle {
+  alignment: string | null;
+  indentLeft: string | null;
+  indentFirstLine: string | null;
+  indentHanging: string | null;
+  spacingBefore: string | null;
+  spacingAfter: string | null;
+  spacingLine: string | null;
 }
 
-function parseParagraphStyles(pPr: Element | null): string[] {
-  const styles: string[] = [];
-  if (!pPr) return styles;
+function extractParagraphStyles(xmlStr: string): ParaStyle[] {
+  const doc = new DOMParser().parseFromString(xmlStr, "text/xml");
+  const body = findChild(doc.documentElement, "body") || doc.documentElement;
+  const paragraphs = findAllChildren(body, "p");
+  const styles: ParaStyle[] = [];
 
-  const jc = findChild(pPr, "jc");
-  if (jc) {
-    const val = jc.getAttribute("w:val");
-    if (val && val !== "left") {
-      styles.push(`text-align: ${val === "both" ? "justify" : val}`);
+  for (const p of paragraphs) {
+    const pPr = findChild(p, "pPr");
+    const style: ParaStyle = {
+      alignment: null,
+      indentLeft: null,
+      indentFirstLine: null,
+      indentHanging: null,
+      spacingBefore: null,
+      spacingAfter: null,
+      spacingLine: null,
+    };
+
+    if (pPr) {
+      const jc = findChild(pPr, "jc");
+      if (jc) {
+        const val = jc.getAttribute("w:val");
+        if (val && val !== "left") {
+          style.alignment = val === "both" ? "justify" : val;
+        }
+      }
+
+      const ind = findChild(pPr, "ind");
+      if (ind) {
+        style.indentLeft = ind.getAttribute("w:left") || null;
+        style.indentFirstLine = ind.getAttribute("w:firstLine") || null;
+        style.indentHanging = ind.getAttribute("w:hanging") || null;
+      }
+
+      const spacing = findChild(pPr, "spacing");
+      if (spacing) {
+        style.spacingBefore = spacing.getAttribute("w:before") || null;
+        style.spacingAfter = spacing.getAttribute("w:after") || null;
+        style.spacingLine = spacing.getAttribute("w:line") || null;
+      }
     }
-  }
 
-  const ind = findChild(pPr, "ind");
-  if (ind) {
-    const left = ind.getAttribute("w:left") || ind.getAttribute("left");
-    const right = ind.getAttribute("w:right") || ind.getAttribute("right");
-    const firstLine = ind.getAttribute("w:firstLine") || ind.getAttribute("firstLine");
-    const hanging = ind.getAttribute("w:hanging") || ind.getAttribute("hanging");
-    if (left) styles.push(`margin-left: ${parseInt(left) / 20}pt`);
-    if (right) styles.push(`margin-right: ${parseInt(right) / 20}pt`);
-    if (firstLine) styles.push(`text-indent: ${parseInt(firstLine) / 20}pt`);
-    if (hanging) styles.push(`text-indent: -${parseInt(hanging) / 20}pt`);
-  }
-
-  const spacing = findChild(pPr, "spacing");
-  if (spacing) {
-    const before = spacing.getAttribute("w:before") || spacing.getAttribute("before");
-    const after = spacing.getAttribute("w:after") || spacing.getAttribute("after");
-    const line = spacing.getAttribute("w:line") || spacing.getAttribute("line");
-    if (before) styles.push(`margin-top: ${parseInt(before) / 20}pt`);
-    if (after) styles.push(`margin-bottom: ${parseInt(after) / 20}pt`);
-    if (line) styles.push(`line-height: ${parseInt(line) / 240}`);
+    styles.push(style);
   }
 
   return styles;
 }
 
-function parseRunContent(run: Element): string {
-  const rPr = findChild(run, "rPr");
-  const textEl = findChild(run, "t");
-  const drawingEl = findChild(run, "drawing") || findChild(run, "pict");
-  if (drawingEl) return "";
-  if (!textEl) return "";
-  const text = textEl.textContent || "";
-
-  const inlineStyles: string[] = [];
-
-  if (rPr) {
-    if (findChild(rPr, "b")) inlineStyles.push("font-weight: bold");
-    if (findChild(rPr, "i")) inlineStyles.push("font-style: italic");
-    if (findChild(rPr, "u")) inlineStyles.push("text-decoration: underline");
-    if (findChild(rPr, "strike")) inlineStyles.push("text-decoration: line-through");
-    const sz = findChild(rPr, "sz");
-    if (sz) inlineStyles.push(`font-size: ${parseInt(sz.getAttribute("w:val") || "0") / 2}pt`);
-    const color = findChild(rPr, "color");
-    if (color) inlineStyles.push(`color: #${color.getAttribute("w:val")}`);
-    const highlight = findChild(rPr, "highlight");
-    if (highlight) inlineStyles.push(`background-color: ${highlight.getAttribute("w:val")}`);
-  }
-
-  const styleAttr = inlineStyles.length > 0 ? ` style="${inlineStyles.join("; ")}"` : "";
-  return `<span${styleAttr}>${escapeHtml(text)}</span>`;
-}
-
-function getAllDescendants(root: Element): Element[] {
-  const result: Element[] = [];
-  function walk(node: Element) {
-    for (const child of node.children) {
-      result.push(child);
-      walk(child);
-    }
-  }
-  walk(root);
-  return result;
-}
-
-function emuToPx(emu: string): number {
-  const val = parseInt(emu, 10);
-  if (isNaN(val)) return 0;
-  return Math.round(val / 914400 * 96);
-}
-
-async function extractImage(
-  parent: Element,
-  zip: JSZip,
-  rels: Record<string, string>
-): Promise<string> {
-  const allElements = getAllDescendants(parent);
-  allElements.unshift(parent);
-
-  let embedId = "";
-  let cx = "0";
-  let cy = "0";
-
-  for (const el of allElements) {
-    embedId = el.getAttribute("r:embed") || el.getAttribute("r:id")
-           || el.getAttribute("embed") || el.getAttribute("id") || "";
-    if (embedId) break;
-  }
-
-  if (!embedId) return "";
-
-  const rawTarget = rels[embedId];
-  if (!rawTarget) return "";
-
-  // Resolve path: rels targets are relative to word/
-  const imagePath = rawTarget.startsWith("word/") ? rawTarget : "word/" + rawTarget;
-
-  const imageFile = zip.file(imagePath);
-  if (!imageFile) return "";
-
-  // Get dimensions from the drawing extent
-  const extent = findDescendant(parent, "extent");
-  if (extent) {
-    cx = extent.getAttribute("cx") || "0";
-    cy = extent.getAttribute("cy") || "0";
-  }
-
-  const imageBuffer = await imageFile.async("base64");
-  const ext = imagePath.split(".").pop()?.toLowerCase() || "png";
-  const mime = ext === "jpg" || ext === "jpeg" ? "image/jpeg"
-    : ext === "png" ? "image/png"
-    : ext === "gif" ? "image/gif"
-    : ext === "svg" ? "image/svg+xml"
-    : ext === "bmp" ? "image/bmp"
-    : ext === "webp" ? "image/webp"
-    : "image/png";
-
-  const width = emuToPx(cx);
-  const height = emuToPx(cy);
-  const styleAttr = width ? ` style="max-width: 100%; width: ${width}px; height: ${height}px"` : ` style="max-width: 100%"`;
-  return `<img src="data:${mime};base64,${imageBuffer}"${styleAttr} alt="" />`;
-}
-
-async function parseImageRun(run: Element, zip: JSZip, rels: Record<string, string>): Promise<string> {
-  const drawing = findChild(run, "drawing") || findChild(run, "pict");
-  if (!drawing) return "";
-  return extractImage(drawing, zip, rels);
-}
-
-async function parseXmlPart(
-  xmlStr: string,
-  zip: JSZip,
-  rels: Record<string, string>
-): Promise<string> {
-  const doc = new DOMParser().parseFromString(xmlStr, "text/xml");
-  const body = findChild(doc.documentElement, "body") || doc.documentElement;
-  const paragraphs = findAllChildren(body, "p");
+function applyStylesToHtml(html: string, styles: ParaStyle[]): string {
+  // Split HTML into paragraph chunks
+  const pRegex = /<p[^>]*>[\s\S]*?<\/p>/g;
   const parts: string[] = [];
+  let lastIdx = 0;
+  let styleIdx = 0;
 
-  for (const p of paragraphs) {
-    const pPr = findChild(p, "pPr");
-    const styles = parseParagraphStyles(pPr);
+  let match: RegExpExecArray | null;
+  while ((match = pRegex.exec(html)) !== null) {
+    parts.push(html.slice(lastIdx, match.index));
 
-    const runs = findAllChildren(p, "r");
-    let innerHtml = "";
-    for (const run of runs) {
-      const textPart = parseRunContent(run);
-      if (textPart) {
-        innerHtml += textPart;
+    const pTag = match[0];
+    const style = styles[styleIdx] || null;
+    styleIdx++;
+
+    if (style) {
+      const cssParts: string[] = [];
+      if (style.alignment) cssParts.push(`text-align: ${style.alignment}`);
+      if (style.indentLeft) cssParts.push(`margin-left: ${parseInt(style.indentLeft) / 20}pt`);
+      if (style.indentFirstLine) cssParts.push(`text-indent: ${parseInt(style.indentFirstLine) / 20}pt`);
+      if (style.indentHanging) cssParts.push(`text-indent: -${parseInt(style.indentHanging) / 20}pt`);
+      if (style.spacingBefore) cssParts.push(`margin-top: ${parseInt(style.spacingBefore) / 20}pt`);
+      if (style.spacingAfter) cssParts.push(`margin-bottom: ${parseInt(style.spacingAfter) / 20}pt`);
+      if (style.spacingLine) cssParts.push(`line-height: ${parseInt(style.spacingLine) / 240}`);
+
+      if (cssParts.length > 0) {
+        const existingStyle = pTag.match(/style="([^"]*)"/);
+        if (existingStyle) {
+          const newTag = pTag.replace(`style="${existingStyle[1]}"`, `style="${existingStyle[1]}; ${cssParts.join("; ")}"`);
+          parts.push(newTag);
+        } else {
+          const newTag = pTag.replace("<p", `<p style="${cssParts.join("; ")}"`);
+          parts.push(newTag);
+        }
       } else {
-        innerHtml += await parseImageRun(run, zip, rels);
+        parts.push(pTag);
       }
+    } else {
+      parts.push(pTag);
     }
 
-    if (innerHtml) {
-      const styleAttr = styles.length > 0 ? ` style="${styles.join("; ")}"` : "";
-      parts.push(`<p${styleAttr}>${innerHtml}</p>`);
-    }
+    lastIdx = match.index + match[0].length;
   }
 
-  return parts.join("\n");
+  parts.push(html.slice(lastIdx));
+  return parts.join("");
 }
 
 export async function docxToHtml(file: File): Promise<string> {
-  const JSZip = (await import("jszip")).default;
+  const [mammothMod, JSZipMod] = await Promise.all([
+    import("mammoth"),
+    import("jszip"),
+  ]);
+  const mammoth = mammothMod.default || mammothMod;
+  const JSZip = JSZipMod.default || JSZipMod;
+
   const buffer = await file.arrayBuffer();
+
+  // Step 1: Extract paragraph styles from XML
   const zip = await JSZip.loadAsync(buffer);
-
   const docXmlStr = await zip.file("word/document.xml")?.async("string");
-  if (!docXmlStr) throw new Error("Invalid docx: missing document.xml");
-
-  const relsXmlStr = await zip.file("word/_rels/document.xml.rels")?.async("string");
-
-  const rels: Record<string, string> = {};
-  if (relsXmlStr) {
-    const relsDoc = new DOMParser().parseFromString(relsXmlStr, "text/xml");
-    for (const rel of findAllChildren(relsDoc.documentElement, "Relationship")) {
-      const id = rel.getAttribute("Id") || "";
-      const target = rel.getAttribute("Target") || "";
-      if (id && target) rels[id] = target;
-    }
+  let paraStyles: ParaStyle[] = [];
+  if (docXmlStr) {
+    paraStyles = extractParagraphStyles(docXmlStr);
   }
 
-  const bodyHtml = await parseXmlPart(docXmlStr, zip, rels);
+  // Step 2: Use mammoth for conversion (handles images, text, run formatting)
+  // Use transformDocument + styleMap for alignment and indentation
+  let fmtCounter = 0;
+  const fmtStyles: Record<string, string> = {};
+  const styleMapEntries: string[] = [];
 
-  // Also check for images in headers/footers
-  const headerFooterParts: string[] = [];
-  for (const path of Object.keys(zip.files)) {
-    if (path.startsWith("word/header") || path.startsWith("word/footer")) {
-      const hfXml = await zip.file(path)?.async("string");
-      if (hfXml) {
-        const hfPart = await parseXmlPart(hfXml, zip, rels);
-        if (hfPart) headerFooterParts.push(hfPart);
+  const transformParagraph = (element: Record<string, unknown>) => {
+    const styles: string[] = [];
+
+    if (element.alignment && element.alignment !== "left") {
+      styles.push(`text-align: ${element.alignment}`);
+    }
+
+    if (element.indent) {
+      const indent = element.indent as Record<string, string>;
+      if (indent.start) styles.push(`margin-left: ${indent.start}pt`);
+      if (indent.firstLine) styles.push(`text-indent: ${indent.firstLine}pt`);
+      if (indent.hanging) styles.push(`text-indent: -${indent.hanging}pt`);
+    }
+
+    if (styles.length > 0) {
+      const key = styles.join("; ");
+      if (!fmtStyles[key]) {
+        fmtCounter++;
+        const cls = `fmt-${fmtCounter}`;
+        fmtStyles[key] = cls;
+        styleMapEntries.push(`p[style-name='${cls}'] => p.${cls}`);
       }
+      return { ...element, styleName: fmtStyles[key] };
     }
+    return element;
+  };
+
+  const result = await mammoth.convertToHtml(
+    { arrayBuffer: buffer },
+    {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      transformDocument: (mammoth as any).transforms.paragraph(transformParagraph),
+      ignoreEmptyParagraphs: false,
+      styleMap: styleMapEntries,
+    }
+  );
+
+  let html = result.value;
+
+  // Step 3: Convert fmt-* classes to inline styles
+  const parser = new DOMParser();
+  const doc = parser.parseFromString(html, "text/html");
+  const reverseMap: Record<string, string> = {};
+  for (const [style, cls] of Object.entries(fmtStyles)) {
+    reverseMap[cls] = style;
   }
 
-  const allParts = [...headerFooterParts, bodyHtml];
-  return allParts.join("\n");
+  doc.querySelectorAll("[class]").forEach((el) => {
+    const classes = el.getAttribute("class")?.split(" ") || [];
+    const fmtClass = classes.find((c) => c.startsWith("fmt-"));
+    if (fmtClass && reverseMap[fmtClass]) {
+      el.removeAttribute("class");
+      el.setAttribute("style", reverseMap[fmtClass]);
+    }
+  });
+
+  html = doc.body.innerHTML;
+
+  // Step 4: Apply paragraph spacing from XML
+  html = applyStylesToHtml(html, paraStyles);
+
+  return html;
 }
