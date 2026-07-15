@@ -4,11 +4,35 @@ function escapeHtml(text: string): string {
   return text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 }
 
+function findChild(parent: Element, localName: string): Element | null {
+  for (const child of parent.children) {
+    if (child.localName === localName) return child;
+  }
+  return null;
+}
+
+function findAllChildren(parent: Element, localName: string): Element[] {
+  const result: Element[] = [];
+  for (const child of parent.children) {
+    if (child.localName === localName) result.push(child);
+  }
+  return result;
+}
+
+function findDescendant(parent: Element, localName: string): Element | null {
+  for (const child of parent.children) {
+    if (child.localName === localName) return child;
+    const found = findDescendant(child, localName);
+    if (found) return found;
+  }
+  return null;
+}
+
 function parseParagraphStyles(pPr: Element | null): string[] {
   const styles: string[] = [];
   if (!pPr) return styles;
 
-  const jc = pPr.querySelector("w\\:jc, jc");
+  const jc = findChild(pPr, "jc");
   if (jc) {
     const val = jc.getAttribute("w:val");
     if (val && val !== "left") {
@@ -16,7 +40,7 @@ function parseParagraphStyles(pPr: Element | null): string[] {
     }
   }
 
-  const ind = pPr.querySelector("w\\:ind, ind");
+  const ind = findChild(pPr, "ind");
   if (ind) {
     const left = ind.getAttribute("w:left") || ind.getAttribute("left");
     const right = ind.getAttribute("w:right") || ind.getAttribute("right");
@@ -28,7 +52,7 @@ function parseParagraphStyles(pPr: Element | null): string[] {
     if (hanging) styles.push(`text-indent: -${parseInt(hanging) / 20}pt`);
   }
 
-  const spacing = pPr?.querySelector("w\\:spacing, spacing");
+  const spacing = findChild(pPr, "spacing");
   if (spacing) {
     const before = spacing.getAttribute("w:before") || spacing.getAttribute("before");
     const after = spacing.getAttribute("w:after") || spacing.getAttribute("after");
@@ -41,34 +65,28 @@ function parseParagraphStyles(pPr: Element | null): string[] {
   return styles;
 }
 
-function parseRun(run: Element): string {
-  const drawing = run.querySelector("w\\:drawing, drawing");
-  if (drawing) {
-    return "";
-  }
-
-  const rPr = run.querySelector("w\\:rPr, rPr");
-  const textEl = run.querySelector("w\\:t, t");
+function parseRunContent(run: Element): string {
+  const rPr = findChild(run, "rPr");
+  const textEl = findChild(run, "t");
+  const drawingEl = findChild(run, "drawing") || findChild(run, "pict");
+  if (drawingEl) return "";
   if (!textEl) return "";
   const text = textEl.textContent || "";
 
-  const bold = rPr?.querySelector("w\\:b, b");
-  const italic = rPr?.querySelector("w\\:i, i");
-  const underline = rPr?.querySelector("w\\:u, u");
-  const strike = rPr?.querySelector("w\\:strike, strike");
-  const sz = rPr?.querySelector("w\\:sz, sz");
-  const color = rPr?.querySelector("w\\:color, color");
-  const highlight = rPr?.querySelector("w\\:highlight, highlight");
-
   const inlineStyles: string[] = [];
 
-  if (bold) inlineStyles.push("font-weight: bold");
-  if (italic) inlineStyles.push("font-style: italic");
-  if (underline) inlineStyles.push("text-decoration: underline");
-  if (strike) inlineStyles.push("text-decoration: line-through");
-  if (sz) inlineStyles.push(`font-size: ${parseInt(sz.getAttribute("w:val") || "0") / 2}pt`);
-  if (color) inlineStyles.push(`color: #${color.getAttribute("w:val")}`);
-  if (highlight) inlineStyles.push(`background-color: ${highlight.getAttribute("w:val")}`);
+  if (rPr) {
+    if (findChild(rPr, "b")) inlineStyles.push("font-weight: bold");
+    if (findChild(rPr, "i")) inlineStyles.push("font-style: italic");
+    if (findChild(rPr, "u")) inlineStyles.push("text-decoration: underline");
+    if (findChild(rPr, "strike")) inlineStyles.push("text-decoration: line-through");
+    const sz = findChild(rPr, "sz");
+    if (sz) inlineStyles.push(`font-size: ${parseInt(sz.getAttribute("w:val") || "0") / 2}pt`);
+    const color = findChild(rPr, "color");
+    if (color) inlineStyles.push(`color: #${color.getAttribute("w:val")}`);
+    const highlight = findChild(rPr, "highlight");
+    if (highlight) inlineStyles.push(`background-color: ${highlight.getAttribute("w:val")}`);
+  }
 
   const styleAttr = inlineStyles.length > 0 ? ` style="${inlineStyles.join("; ")}"` : "";
   return `<span${styleAttr}>${escapeHtml(text)}</span>`;
@@ -80,21 +98,30 @@ function emuToPx(emu: string): number {
   return Math.round(val / 914400 * 96);
 }
 
-async function parseImageRun(run: Element, zip: JSZip, rels: Record<string, string>): Promise<string> {
-  const drawing = run.querySelector("w\\:drawing, drawing");
-  if (!drawing) return "";
+async function extractImage(
+  parent: Element,
+  zip: JSZip,
+  rels: Record<string, string>
+): Promise<string> {
+  // Search parent and all descendants for r:embed attribute
+  const allElements = [parent, ...parent.querySelectorAll("*")];
 
-  const inlineOrAnchor = drawing.querySelector("wp\\:inline, inline, wp\\:anchor, anchor");
-  if (!inlineOrAnchor) return "";
+  let embedId = "";
+  let cx = "0";
+  let cy = "0";
 
-  const extent = inlineOrAnchor.querySelector("wp\\:extent, extent");
-  const cx = extent?.getAttribute("cx") || extent?.getAttribute("w:cx") || "0";
-  const cy = extent?.getAttribute("cy") || extent?.getAttribute("w:cy") || "0";
-  const width = emuToPx(cx);
-  const height = emuToPx(cy);
+  for (const el of allElements) {
+    embedId = el.getAttribute("r:embed") || el.getAttribute("embed") || "";
+    if (embedId) {
+      const extent = findDescendant(el, "extent");
+      if (extent) {
+        cx = extent.getAttribute("cx") || "0";
+        cy = extent.getAttribute("cy") || "0";
+      }
+      break;
+    }
+  }
 
-  const blip = inlineOrAnchor.querySelector("pic\\:blip, blip, a\\:blip");
-  const embedId = blip?.getAttribute("r:embed") || blip?.getAttribute("embed") || "";
   if (!embedId) return "";
 
   const imagePath = rels[embedId];
@@ -113,8 +140,50 @@ async function parseImageRun(run: Element, zip: JSZip, rels: Record<string, stri
     : ext === "webp" ? "image/webp"
     : "image/png";
 
-  const styleAttr = width && height ? ` style="max-width: 100%; width: ${width}px; height: ${height}px"` : ` style="max-width: 100%"`;
-  return `<img src="data:${mime};base64,${imageBuffer}"${styleAttr} alt="image" />`;
+  const width = emuToPx(cx);
+  const height = emuToPx(cy);
+  const styleAttr = width ? ` style="max-width: 100%; width: ${width}px; height: ${height}px"` : ` style="max-width: 100%"`;
+  return `<img src="data:${mime};base64,${imageBuffer}"${styleAttr} alt="" />`;
+}
+
+async function parseImageRun(run: Element, zip: JSZip, rels: Record<string, string>): Promise<string> {
+  const drawing = findChild(run, "drawing") || findChild(run, "pict");
+  if (!drawing) return "";
+  return extractImage(drawing, zip, rels);
+}
+
+async function parseXmlPart(
+  xmlStr: string,
+  zip: JSZip,
+  rels: Record<string, string>
+): Promise<string> {
+  const doc = new DOMParser().parseFromString(xmlStr, "text/xml");
+  const body = findChild(doc.documentElement, "body") || doc.documentElement;
+  const paragraphs = findAllChildren(body, "p");
+  const parts: string[] = [];
+
+  for (const p of paragraphs) {
+    const pPr = findChild(p, "pPr");
+    const styles = parseParagraphStyles(pPr);
+
+    const runs = findAllChildren(p, "r");
+    let innerHtml = "";
+    for (const run of runs) {
+      const textPart = parseRunContent(run);
+      if (textPart) {
+        innerHtml += textPart;
+      } else {
+        innerHtml += await parseImageRun(run, zip, rels);
+      }
+    }
+
+    if (innerHtml) {
+      const styleAttr = styles.length > 0 ? ` style="${styles.join("; ")}"` : "";
+      parts.push(`<p${styleAttr}>${innerHtml}</p>`);
+    }
+  }
+
+  return parts.join("\n");
 }
 
 export async function docxToHtml(file: File): Promise<string> {
@@ -130,42 +199,27 @@ export async function docxToHtml(file: File): Promise<string> {
   const rels: Record<string, string> = {};
   if (relsXmlStr) {
     const relsDoc = new DOMParser().parseFromString(relsXmlStr, "text/xml");
-    const relationships = relsDoc.querySelectorAll("Relationship");
-    for (const rel of relationships) {
-      const id = rel.getAttribute("Id") || rel.getAttribute("Id");
-      const target = rel.getAttribute("Target") || rel.getAttribute("target");
-      if (id && target) {
-        rels[id] = target;
+    for (const rel of findAllChildren(relsDoc.documentElement, "Relationship")) {
+      const id = rel.getAttribute("Id") || "";
+      const target = rel.getAttribute("Target") || "";
+      if (id && target) rels[id] = target;
+    }
+  }
+
+  const bodyHtml = await parseXmlPart(docXmlStr, zip, rels);
+
+  // Also check for images in headers/footers
+  const headerFooterParts: string[] = [];
+  for (const path of Object.keys(zip.files)) {
+    if (path.startsWith("word/header") || path.startsWith("word/footer")) {
+      const hfXml = await zip.file(path)?.async("string");
+      if (hfXml) {
+        const hfPart = await parseXmlPart(hfXml, zip, rels);
+        if (hfPart) headerFooterParts.push(hfPart);
       }
     }
   }
 
-  const parser = new DOMParser();
-  const doc = parser.parseFromString(docXmlStr, "text/xml");
-
-  const paragraphs = doc.querySelectorAll("w\\:p, p");
-  const parts: string[] = [];
-
-  for (const p of paragraphs) {
-    const pPr = p.querySelector("w\\:pPr, pPr");
-    const styles = parseParagraphStyles(pPr);
-
-    const runs = p.querySelectorAll("w\\:r, r");
-    let innerHtml = "";
-    for (const run of runs) {
-      const textPart = parseRun(run);
-      if (textPart) {
-        innerHtml += textPart;
-      } else {
-        innerHtml += await parseImageRun(run, zip, rels);
-      }
-    }
-
-    if (innerHtml) {
-      const styleAttr = styles.length > 0 ? ` style="${styles.join("; ")}"` : "";
-      parts.push(`<p${styleAttr}>${innerHtml}</p>`);
-    }
-  }
-
-  return parts.join("\n");
+  const allParts = [...headerFooterParts, bodyHtml];
+  return allParts.join("\n");
 }
