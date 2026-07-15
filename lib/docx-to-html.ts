@@ -34,8 +34,8 @@ function parseStylesFromPPr(pPr: string): string[] {
     const before = spacingMatch[0].match(/w:before="(\d+)"/);
     const after = spacingMatch[0].match(/w:after="(\d+)"/);
     const line = spacingMatch[0].match(/w:line="(\d+)"/);
-    if (before) styles.push(`margin-top: ${twipToPt(before[1])}`);
-    if (after) styles.push(`margin-bottom: ${twipToPt(after[1])}`);
+    if (before) styles.push(`margin-top: ${(parseInt(before[1]) / 40).toFixed(1)}pt`);
+    if (after) styles.push(`margin-bottom: ${(parseInt(after[1]) / 40).toFixed(1)}pt`);
     if (line) styles.push(`line-height: ${parseInt(line[1]) / 240}`);
   }
 
@@ -78,7 +78,7 @@ async function extractParaContent(paraXml: string, zip: any, rels: Record<string
         : ext === "webp" ? "image/webp"
         : "image/png";
 
-      const dimStyle = width ? `max-width: 100%; width: ${width}px; height: ${height}px; display: inline-block` : `max-width: 100%; display: inline-block`;
+      const dimStyle = width ? `max-width: 100%; width: ${width}px; height: ${height}px; display: block` : `max-width: 100%; display: block`;
       return `<img src="data:${mime};base64,${imageBuffer}" style="${dimStyle}" alt="" />`;
     }
 
@@ -112,6 +112,8 @@ async function processPara(paraXml: string, zip: any, rels: Record<string, strin
   const styles = parseStylesFromPPr(pPr);
   const innerHtml = await extractParaContent(paraXml, zip, rels);
   if (!innerHtml) return "";
+  if (!styles.some(s => s.startsWith("margin-top"))) styles.push("margin-top: 0");
+  if (!styles.some(s => s.startsWith("margin-bottom"))) styles.push("margin-bottom: 0");
   const styleAttr = styles.length > 0 ? ` style="${styles.join("; ")}"` : "";
   return `<p${styleAttr}>${innerHtml}</p>`;
 }

@@ -31,7 +31,7 @@ export default function EditCampaign() {
           body_template: campaign.body_template,
           global_bcc: campaign.global_bcc || "",
           global_cc: campaign.global_cc || "",
-          rate_limit: campaign.rate_limit || 10,
+          rate_limit: campaign.rate_limit || 20,
           csvHeaders: [],
           csvRows: [],
           csvFileName: "",

@@ -29,7 +29,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "subject_template is required" }, { status: 400 });
   }
 
-  const rateLimit = body.rate_limit ? Number(body.rate_limit) : 10;
+  const rateLimit = body.rate_limit ? Number(body.rate_limit) : 20;
   if (!Number.isInteger(rateLimit) || rateLimit < 1 || rateLimit > 100) {
     return NextResponse.json({ error: "rate_limit must be an integer between 1 and 100" }, { status: 400 });
   }
