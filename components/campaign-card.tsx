@@ -3,6 +3,8 @@
 import { Campaign } from "@/types";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Copy, Trash2 } from "lucide-react";
 
 const statusConfig: Record<string, { label: string; className: string }> = {
   draft: { label: "Draft", className: "bg-muted text-muted-foreground" },
@@ -11,15 +13,23 @@ const statusConfig: Record<string, { label: string; className: string }> = {
   partial: { label: "Partial", className: "bg-amber-500 text-white" },
 };
 
-export function CampaignCard({ campaign }: { campaign: Campaign }) {
+export function CampaignCard({
+  campaign,
+  onDelete,
+  onClone,
+}: {
+  campaign: Campaign;
+  onDelete?: (e: React.MouseEvent) => void;
+  onClone?: (e: React.MouseEvent) => void;
+}) {
   const status = statusConfig[campaign.status] || statusConfig.draft;
 
   return (
-    <Card className="cursor-pointer hover:shadow-lg transition-all duration-200 border-t-[3px] border-t-primary border-x border-b">
+    <Card className="hover:shadow-lg transition-all duration-200 border-t-[3px] border-t-primary border-x border-b">
       <CardHeader>
         <div className="flex items-center justify-between">
-          <CardTitle className="text-lg">{campaign.name}</CardTitle>
-          <Badge className={status.className}>{status.label}</Badge>
+          <CardTitle className="text-lg truncate">{campaign.name}</CardTitle>
+          <Badge className={status.className + " shrink-0"}>{status.label}</Badge>
         </div>
       </CardHeader>
       <CardContent>
@@ -29,6 +39,27 @@ export function CampaignCard({ campaign }: { campaign: Campaign }) {
         <p className="text-sm text-muted-foreground truncate">
           Subject: {campaign.subject_template}
         </p>
+        {(onDelete || onClone) && (
+          <div className="flex items-center gap-1 mt-3 pt-3 border-t">
+            {onClone && (
+              <Button variant="outline" size="sm" onClick={onClone} className="h-8 text-xs gap-1">
+                <Copy className="size-3" />
+                Clone
+              </Button>
+            )}
+            {onDelete && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={onDelete}
+                className="h-8 text-xs gap-1 text-destructive hover:text-destructive"
+              >
+                <Trash2 className="size-3" />
+                Delete
+              </Button>
+            )}
+          </div>
+        )}
       </CardContent>
     </Card>
   );

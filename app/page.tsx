@@ -89,18 +89,27 @@ export default function Dashboard() {
       {/* Campaign grid */}
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
         {campaigns.map(c => (
-          <div key={c.id} className="relative">
-            <div onClick={() => router.push(`/campaign/${c.id}`)}>
-              <CampaignCard campaign={c} />
-            </div>
-            <Button
-              variant="ghost"
-              size="xs"
-              className="absolute top-2 right-2 text-muted-foreground hover:text-destructive"
-              onClick={(e) => handleDelete(e, c.id)}
-            >
-              Delete
-            </Button>
+          <div
+            key={c.id}
+            className="cursor-pointer"
+            onClick={() => router.push(`/campaign/${c.id}`)}
+          >
+            <CampaignCard
+              campaign={c}
+              onDelete={(e) => handleDelete(e, c.id)}
+              onClone={async (e) => {
+                e.stopPropagation();
+                try {
+                  const res = await fetch(`/api/campaigns/${c.id}/clone`, { method: "POST" });
+                  if (!res.ok) throw new Error("Failed to clone");
+                  const cloned = await res.json();
+                  setCampaigns(prev => [...prev, cloned]);
+                  toast.success("Campaign cloned");
+                } catch (e: unknown) {
+                  toast.error(e instanceof Error ? e.message : "Failed to clone");
+                }
+              }}
+            />
           </div>
         ))}
       </div>
