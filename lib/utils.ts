@@ -41,7 +41,7 @@ function parseCSVLine(line: string): string[] {
 export function parseCSV(text: string): { headers: string[]; rows: Record<string, string>[] } {
   const lines = text.trim().split('\n');
   if (lines.length < 2) return { headers: [], rows: [] };
-  const headers = parseCSVLine(lines[0]).filter(Boolean);
+  const headers = parseCSVLine(lines[0]).filter(Boolean).map(h => h.trim());
   if (headers.length === 0) return { headers: [], rows: [] };
   const rows = lines.slice(1).map(line => {
     const values = parseCSVLine(line);
@@ -63,8 +63,15 @@ export function parseExcel(file: File): Promise<{ headers: string[]; rows: Recor
         const sheet = workbook.Sheets[workbook.SheetNames[0]];
         const json = XLSX.utils.sheet_to_json<Record<string, string>>(sheet, { defval: "" });
         if (json.length === 0) return resolve({ headers: [], rows: [], fileName: file.name });
-        const headers = Object.keys(json[0]);
-        resolve({ headers, rows: json, fileName: file.name });
+        const headers = Object.keys(json[0]).map(h => h.trim());
+        const trimmedRows = json.map(row => {
+          const trimmed: Record<string, string> = {};
+          for (const [key, val] of Object.entries(row)) {
+            trimmed[key.trim()] = val;
+          }
+          return trimmed;
+        });
+        resolve({ headers, rows: trimmedRows, fileName: file.name });
       } catch (err) {
         reject(err);
       }
