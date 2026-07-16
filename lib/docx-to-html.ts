@@ -78,7 +78,7 @@ async function extractParaContent(paraXml: string, zip: any, rels: Record<string
         : ext === "webp" ? "image/webp"
         : "image/png";
 
-      const dimStyle = width ? `max-width: 100%; width: ${width}px; height: ${height}px; display: block` : `max-width: 100%; display: block`;
+      const dimStyle = width ? `max-width: 100%; width: ${width}px; height: ${height}px; display: inline-block; vertical-align: middle` : `max-width: 100%; display: inline-block; vertical-align: middle`;
       return `<img src="data:${mime};base64,${imageBuffer}" style="${dimStyle}" alt="" />`;
     }
 
@@ -112,6 +112,7 @@ async function processPara(paraXml: string, zip: any, rels: Record<string, strin
   const styles = parseStylesFromPPr(pPr);
   const innerHtml = await extractParaContent(paraXml, zip, rels);
   if (!innerHtml) return "";
+  if (!innerHtml.replace(/<[^>]+>/g, "").trim() && !/<img[\s>]/i.test(innerHtml)) return "";
   if (!styles.some(s => s.startsWith("margin-top"))) styles.push("margin-top: 0");
   if (!styles.some(s => s.startsWith("margin-bottom"))) styles.push("margin-bottom: 0");
   const styleAttr = styles.length > 0 ? ` style="${styles.join("; ")}"` : "";
