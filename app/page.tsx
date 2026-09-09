@@ -24,18 +24,31 @@ export default function Dashboard() {
       setLoading(false);
       if (!session) router.push("/login");
     });
-  }, []);
+  }, [router]);
+
+  const hasActiveCampaigns = campaigns.some(c => c.status === "sending");
 
   useEffect(() => {
     if (!session) return;
-    fetch("/api/campaigns")
-      .then(r => {
-        if (!r.ok) throw new Error("Failed to load campaigns");
-        return r.json();
-      })
-      .then(setCampaigns)
-      .catch(e => setError(e.message));
-  }, [session]);
+
+    const loadCampaigns = () => {
+      fetch("/api/campaigns")
+        .then(r => {
+          if (!r.ok) throw new Error("Failed to load campaigns");
+          return r.json();
+        })
+        .then(setCampaigns)
+        .catch(e => setError(e.message));
+    };
+
+    loadCampaigns();
+
+    // Auto-refresh when any campaign is currently sending
+    if (hasActiveCampaigns) {
+      const interval = setInterval(loadCampaigns, 3000);
+      return () => clearInterval(interval);
+    }
+  }, [session, hasActiveCampaigns]);
 
   const handleDelete = async (e: React.MouseEvent, id: string) => {
     e.stopPropagation();
@@ -53,6 +66,7 @@ export default function Dashboard() {
   if (loading) return <div className="p-8 text-center">Loading...</div>;
   if (!session) return null;
 
+  const totalSending = campaigns.reduce((sum, c) => c.status === "sending" ? sum + 1 : sum, 0);
   const totalSent = campaigns.reduce((sum, c) => c.status === "done" ? sum + 1 : sum, 0);
   const totalPartial = campaigns.reduce((sum, c) => c.status === "partial" ? sum + 1 : sum, 0);
 
@@ -68,11 +82,16 @@ export default function Dashboard() {
       {error && <p className="text-destructive text-center mb-4">{error}</p>}
 
       {/* Stat cards */}
-      <div className="grid grid-cols-3 gap-3 md:gap-4 mb-6">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4 mb-6">
         <div className="border border-border rounded-xl p-3 md:p-4 text-center">
           <Send className="size-5 md:size-6 mx-auto mb-1 text-primary" />
           <div className="text-xl md:text-2xl font-bold text-foreground">{campaigns.length}</div>
           <div className="text-xs md:text-sm text-muted-foreground">Total</div>
+        </div>
+        <div className="border border-border rounded-xl p-3 md:p-4 text-center">
+          <Send className={`size-5 md:size-6 mx-auto mb-1 text-blue-500 ${totalSending > 0 ? "animate-pulse" : ""}`} />
+          <div className="text-xl md:text-2xl font-bold text-foreground">{totalSending}</div>
+          <div className="text-xs md:text-sm text-muted-foreground">Active Sending</div>
         </div>
         <div className="border border-border rounded-xl p-3 md:p-4 text-center">
           <CheckCircle className="size-5 md:size-6 mx-auto mb-1 text-green-600" />

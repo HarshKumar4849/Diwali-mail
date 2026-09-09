@@ -23,6 +23,16 @@ export default function NewCampaign() {
     let campaignId: string | null = null;
 
     try {
+      if (!data.name || !data.name.trim()) {
+        throw new Error("Campaign Name is required (Step 1: Setup)");
+      }
+      if (!data.csvRows || data.csvRows.length === 0 || !data.emailColumn) {
+        throw new Error("A CSV or Excel file with a recipient email column is required (Step 1: Setup)");
+      }
+      if (!data.subject_template || !data.subject_template.trim()) {
+        throw new Error("Subject line is required (Step 2: Template)");
+      }
+
       const campRes = await fetch("/api/campaigns", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -35,7 +45,10 @@ export default function NewCampaign() {
           rate_limit: data.rate_limit,
         }),
       });
-      if (!campRes.ok) throw new Error("Failed to create campaign");
+      if (!campRes.ok) {
+        const errJson = await campRes.json().catch(() => ({}));
+        throw new Error(errJson.error || "Failed to create campaign");
+      }
       const campaign = await campRes.json();
       campaignId = campaign.id;
 
@@ -51,7 +64,10 @@ export default function NewCampaign() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ recipients }),
       });
-      if (!recRes.ok) throw new Error("Failed to save recipients");
+      if (!recRes.ok) {
+        const errJson = await recRes.json().catch(() => ({}));
+        throw new Error(errJson.error || "Failed to save recipients");
+      }
 
       const validAttachments = (data.globalAttachments || []).filter(
         (att: { path?: string; name?: string }) => att.path && att.name
@@ -68,7 +84,10 @@ export default function NewCampaign() {
             })),
           }),
         });
-        if (!attRes.ok) throw new Error("Failed to save attachments");
+        if (!attRes.ok) {
+          const errJson = await attRes.json().catch(() => ({}));
+          throw new Error(errJson.error || "Failed to save attachments");
+        }
       }
 
       sessionStorage.removeItem("mailcraft-wizard-data");

@@ -42,7 +42,7 @@ if (!supabaseUrl || !supabaseUrl.match(/^https?:\/\//i) || !serviceRoleKey) {
 
 const supabase = createClient(supabaseUrl, serviceRoleKey);
 
-const { data, error } = await supabase.auth.admin.createUser({
+const { error } = await supabase.auth.admin.createUser({
   email,
   password,
   email_confirm: true,

@@ -1,6 +1,20 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-function escapeHtml(text: string): string {
-  return text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+import { escapeHtml } from "@/lib/email/template";
+
+/**
+ * Decodes XML entities found inside Word OpenXML document.xml nodes.
+ * Word encodes ampersands and special characters as &amp;, &lt;, &gt;, &quot;, &apos;.
+ * We decode them back to raw characters before canonical HTML escaping so that
+ * characters like & in "Johnson & Johnson" are not double-escaped to &amp;amp;.
+ */
+function decodeXmlEntities(text: string): string {
+  if (!text) return "";
+  return text
+    .replace(/&amp;/g, "&")
+    .replace(/&lt;/g, "<")
+    .replace(/&gt;/g, ">")
+    .replace(/&quot;/g, '"')
+    .replace(/&apos;/g, "'");
 }
 
 function emuToPx(emu: string): number {
@@ -34,8 +48,8 @@ function parseStylesFromPPr(pPr: string): string[] {
     const before = spacingMatch[0].match(/w:before="(\d+)"/);
     const after = spacingMatch[0].match(/w:after="(\d+)"/);
     const line = spacingMatch[0].match(/w:line="(\d+)"/);
-    if (before) styles.push(`margin-top: ${(parseInt(before[1]) / 40).toFixed(1)}pt`);
-    if (after) styles.push(`margin-bottom: ${(parseInt(after[1]) / 40).toFixed(1)}pt`);
+    if (before) styles.push(`margin-top: ${twipToPt(before[1])}`);
+    if (after) styles.push(`margin-bottom: ${twipToPt(after[1])}`);
     if (line) styles.push(`line-height: ${parseInt(line[1]) / 240}`);
   }
 
@@ -82,6 +96,10 @@ async function extractParaContent(paraXml: string, zip: any, rels: Record<string
       return `<img src="data:${mime};base64,${imageBuffer}" style="${dimStyle}" alt="" />`;
     }
 
+    if (/<w:br[\s>/]/.test(runXml)) {
+      return "<br>";
+    }
+
     const tMatch = runXml.match(/<w:t[^>]*>([^<]*)<\/w:t>/);
     if (!tMatch) return "";
     const text = tMatch[1];
@@ -100,7 +118,7 @@ async function extractParaContent(paraXml: string, zip: any, rels: Record<string
     if (colorMatch) inlineStyles.push(`color: #${colorMatch[1]}`);
 
     const styleAttr = inlineStyles.length > 0 ? ` style="${inlineStyles.join("; ")}"` : "";
-    return `<span${styleAttr}>${escapeHtml(text)}</span>`;
+    return `<span${styleAttr}>${escapeHtml(decodeXmlEntities(text))}</span>`;
   }));
 
   return parts.join("");
@@ -158,15 +176,15 @@ async function processTable(tblXml: string, zip: any, rels: Record<string, strin
       // Process paragraphs inside cell
       const cellParas = cellXml.match(/<w:p[\s>][\s\S]*?<\/w:p>/g) || [];
       const cellContent = await Promise.all(cellParas.map(p => processPara(p, zip, rels)));
-      const inner = cellContent.filter(c => c).join("\n");
+      const inner = cellContent.filter(c => c).join("");
 
-      return `    <td${colspan}${cellStyle}>\n${inner}\n    </td>`;
+      return `<td${colspan}${cellStyle}>${inner}</td>`;
     }));
 
-    return `  <tr>\n${cellHtmls.join("\n")}\n  </tr>`;
+    return `<tr>${cellHtmls.join("")}</tr>`;
   }));
 
-  return `<table${tableStyle}>\n${rowHtmls.join("\n")}\n</table>`;
+  return `<table${tableStyle}>${rowHtmls.join("")}</table>`;
 }
 
 export async function docxToHtml(file: File): Promise<string> {
@@ -224,5 +242,5 @@ export async function docxToHtml(file: File): Promise<string> {
     }
   }
 
-  return [...hfParts, ...parts].join("\n");
+  return [...hfParts, ...parts].join("");
 }

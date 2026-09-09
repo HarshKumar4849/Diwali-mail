@@ -114,7 +114,6 @@ export const PlaceholderAutocomplete = memo(function PlaceholderAutocomplete({
   }, [handleInput]);
 
   const commonProps = {
-    ref: inputRef as any,
     value,
     placeholder,
     id,
@@ -127,12 +126,14 @@ export const PlaceholderAutocomplete = memo(function PlaceholderAutocomplete({
       <label className="block text-sm font-medium">{label}</label>
       {multiline ? (
         <textarea
+          ref={inputRef as React.RefObject<HTMLTextAreaElement>}
           {...commonProps}
           rows={rows || 6}
           className="flex w-full rounded-md border border-input bg-transparent px-3 py-2 text-base shadow-sm transition-colors placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50 md:text-sm font-mono"
         />
       ) : (
         <input
+          ref={inputRef as React.RefObject<HTMLInputElement>}
           {...commonProps}
           className="flex w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-sm transition-colors placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50 font-mono"
         />

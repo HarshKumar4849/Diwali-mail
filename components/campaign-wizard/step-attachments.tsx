@@ -53,7 +53,7 @@ export function StepAttachments({ data, updateData }: { data: WizardData; update
         <label className="block text-sm font-medium mb-1">Per-Recipient Attachment Column</label>
         <select className="w-full p-2 border rounded" value={data.attachmentColumn || ""} onChange={e => updateData({ attachmentColumn: e.target.value })}>
           <option value="">None</option>
-          {data.csvHeaders?.map((h: string) => <option key={h} value={h}>{h}</option>)}
+          {data.csvHeaders?.filter((h: string) => h !== data.emailColumn).map((h: string) => <option key={h} value={h}>{h}</option>)}
         </select>
         <p className="text-xs text-muted-foreground mt-1">If a CSV column contains URLs or file paths to attach per recipient</p>
       </div>
