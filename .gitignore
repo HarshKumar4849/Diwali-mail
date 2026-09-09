@@ -5,3 +5,4 @@ node_modules/
 core.*
 tsconfig.tsbuildinfo
 public/sw.js
+test-csvs/

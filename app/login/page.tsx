@@ -1,7 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import type { Metadata } from "next";
 
 export const dynamic = "force-dynamic";
 import { useRouter } from "next/navigation";

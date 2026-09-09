@@ -1,5 +1,6 @@
-import { createGraphClient } from "@/lib/graph/client";
-import { renderTemplate } from "@/lib/email/template";
+import { Client } from "@microsoft/microsoft-graph-client";
+import { createGraphClient, isGraph401, getValidAccessToken } from "@/lib/graph/client";
+import { renderTemplate, compileTemplate } from "@/lib/email/template";
 import { createClient } from "@/lib/supabase/server";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Recipient, Campaign, Attachment } from "@/types";
@@ -56,38 +57,43 @@ export async function sendEmail({ campaign, recipient, globalAttachments, supaba
   const graphClient = await createGraphClient(campaign.user_id, supabase);
 
   const subject = renderTemplate(campaign.subject_template, recipient.data);
-  let body = renderTemplate(campaign.body_template, recipient.data);
-  body = body.replace(/\n/g, "<br>");
+  let body = compileTemplate(campaign.body_template, recipient.data);
 
   // Convert base64 images to hosted URLs (Gmail doesn't render base64 images)
   const db = supabase || await createClient();
   const imgRegex = /<img\s+src="data:image\/([^;]+);base64,([^"]+)"([^>]*)>/g;
   let imgMatch: RegExpExecArray | null;
-  const imageUploads: Promise<void>[] = [];
+  const imagesToUpload: Array<{ fullTag: string; ext: string; b64: string; restAttrs: string; filePath: string }> = [];
 
   while ((imgMatch = imgRegex.exec(body)) !== null) {
-    const fullTag = imgMatch[0];
     const ext = imgMatch[1];
-    const b64 = imgMatch[2];
-    const restAttrs = imgMatch[3];
-    const raw = Buffer.from(b64, "base64");
-    const filePath = `email-images/${crypto.randomUUID()}.${ext}`;
-
-    imageUploads.push(
-      db.storage.from("mailcraft").upload(filePath, raw, {
-        contentType: `image/${ext}`,
-        upsert: false,
-      }).then(({ error }) => {
-        if (error) throw new Error(`Failed to upload image: ${error.message}`);
-        const { data: { publicUrl } } = db.storage.from("mailcraft").getPublicUrl(filePath);
-        body = body.replace(fullTag, `<img src="${publicUrl}"${restAttrs}>`);
-      })
-    );
+    imagesToUpload.push({
+      fullTag: imgMatch[0],
+      ext,
+      b64: imgMatch[2],
+      restAttrs: imgMatch[3],
+      filePath: `email-images/${crypto.randomUUID()}.${ext}`,
+    });
   }
 
-  await Promise.all(imageUploads);
-  if (imageUploads.length > 0) {
-    console.log(`[sendEmail] Uploaded ${imageUploads.length} inline image(s) for ${recipient.email}`);
+  if (imagesToUpload.length > 0) {
+    await Promise.all(
+      imagesToUpload.map(async (img) => {
+        const raw = Buffer.from(img.b64, "base64");
+        const { error } = await db.storage.from("mailcraft").upload(img.filePath, raw, {
+          contentType: `image/${img.ext}`,
+          upsert: false,
+        });
+        if (error) throw new Error(`Failed to upload image: ${error.message}`);
+      })
+    );
+
+    for (const img of imagesToUpload) {
+      const { data: { publicUrl } } = db.storage.from("mailcraft").getPublicUrl(img.filePath);
+      body = body.replace(img.fullTag, `<img src="${publicUrl}"${img.restAttrs}>`);
+    }
+
+    console.log(`[sendEmail] Uploaded and linked ${imagesToUpload.length} inline image(s) for ${recipient.email}`);
   }
 
   const message: Record<string, unknown> = {
@@ -136,5 +142,21 @@ export async function sendEmail({ campaign, recipient, globalAttachments, supaba
   }
 
   console.log(`[sendEmail] Sending email to ${recipient.email}`);
-  await graphClient.api("/me/sendMail").post({ message, saveToSentItems: true });
+  try {
+    await graphClient.api("/me/sendMail").post({ message, saveToSentItems: true });
+  } catch (err: unknown) {
+    if (isGraph401(err)) {
+      console.log(`[sendEmail] Graph returned 401 for ${recipient.email}. Refreshing token and retrying once...`);
+      const freshToken = await getValidAccessToken(campaign.user_id, supabase, true);
+      const retryClient = Client.initWithMiddleware({
+        authProvider: {
+          getAccessToken: async () => freshToken,
+        },
+      });
+      await retryClient.api("/me/sendMail").post({ message, saveToSentItems: true });
+      console.log(`[sendEmail] Retry after token refresh succeeded for ${recipient.email}`);
+    } else {
+      throw err;
+    }
+  }
 }

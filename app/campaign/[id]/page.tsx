@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import type { Campaign, Recipient } from "@/types";
@@ -71,9 +71,23 @@ export default function CampaignDetail() {
     return () => { supabase.removeChannel(channel); };
   }, [id, supabase]);
 
+  const isProcessingBatchRef = useRef(false);
+
+  const isSending = campaign?.status === "sending";
+
   useEffect(() => {
-    if (!campaign || campaign.status !== "sending") return;
+    if (!isSending) return;
     const interval = setInterval(async () => {
+      // Trigger process-batch if not already in flight
+      if (!isProcessingBatchRef.current) {
+        isProcessingBatchRef.current = true;
+        fetch(`/api/campaigns/${id}/process-batch`, { method: "POST" })
+          .catch(() => {})
+          .finally(() => {
+            isProcessingBatchRef.current = false;
+          });
+      }
+
       try {
         const [campRes, recRes] = await Promise.all([
           fetch(`/api/campaigns/${id}`),
@@ -94,7 +108,7 @@ export default function CampaignDetail() {
       } catch {}
     }, 3000);
     return () => clearInterval(interval);
-  }, [id, campaign?.status]);
+  }, [id, isSending]);
 
   const handleSend = async () => {
     setSending(true);

@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import type { WizardData } from "@/types";
+import { renderTemplate, compileTemplate } from "@/lib/email/template";
 
 export function StepReview({ data }: { data: WizardData; updateData: (d: Partial<WizardData>) => void }) {
   const [connected, setConnected] = useState<boolean | null>(null);
@@ -53,10 +54,10 @@ export function StepReview({ data }: { data: WizardData; updateData: (d: Partial
         {data.csvRows?.[0] && data.emailColumn && (
           <div>
             <p><strong>To:</strong> {data.csvRows[0][data.emailColumn]}</p>
-            <p><strong>Subject:</strong> {data.subject_template.replace(/\{\{(.+?)\}\}/g, (_, k) => data.csvRows[0][k.trim()] || `{{${k.trim()}}}`)}</p>
+            <p><strong>Subject:</strong> {renderTemplate(data.subject_template || "", data.csvRows[0])}</p>
             <p><strong>Body:</strong></p>
             <div className="bg-muted p-3 rounded mt-1 text-sm overflow-x-auto break-words" dangerouslySetInnerHTML={{
-              __html: data.body_template.replace(/\{\{(.+?)\}\}/g, (_, k) => data.csvRows[0][k.trim()] || `{{${k.trim()}}}`)
+              __html: compileTemplate(data.body_template || "", data.csvRows[0])
             }} />
           </div>
         )}

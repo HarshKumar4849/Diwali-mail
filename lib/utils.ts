@@ -38,8 +38,42 @@ function parseCSVLine(line: string): string[] {
   return values;
 }
 
+function splitCSVRows(text: string): string[] {
+  const rows: string[] = [];
+  let current = "";
+  let inQuotes = false;
+
+  for (let i = 0; i < text.length; i++) {
+    const char = text[i];
+    if (char === '"') {
+      if (inQuotes && i + 1 < text.length && text[i + 1] === '"') {
+        current += '""';
+        i++;
+      } else {
+        inQuotes = !inQuotes;
+        current += char;
+      }
+    } else if ((char === '\n' || char === '\r') && !inQuotes) {
+      if (char === '\r' && i + 1 < text.length && text[i + 1] === '\n') {
+        i++;
+      }
+      if (current.trim()) {
+        rows.push(current);
+      }
+      current = "";
+    } else {
+      current += char;
+    }
+  }
+  if (current.trim()) {
+    rows.push(current);
+  }
+  return rows;
+}
+
 export function parseCSV(text: string): { headers: string[]; rows: Record<string, string>[] } {
-  const lines = text.trim().split('\n');
+  if (!text) return { headers: [], rows: [] };
+  const lines = splitCSVRows(text.trim());
   if (lines.length < 2) return { headers: [], rows: [] };
   const headers = parseCSVLine(lines[0]).filter(Boolean).map(h => h.trim());
   if (headers.length === 0) return { headers: [], rows: [] };
