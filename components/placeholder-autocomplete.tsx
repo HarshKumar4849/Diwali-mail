@@ -122,33 +122,38 @@ export const PlaceholderAutocomplete = memo(function PlaceholderAutocomplete({
   };
 
   return (
-    <div className="space-y-1 relative">
-      <label className="block text-sm font-medium">{label}</label>
+    <div className="space-y-1.5 relative">
+      <label className="block text-sm font-semibold text-foreground">{label}</label>
       {multiline ? (
         <textarea
           ref={inputRef as React.RefObject<HTMLTextAreaElement>}
           {...commonProps}
-          rows={rows || 6}
-          className="flex w-full rounded-md border border-input bg-transparent px-3 py-2 text-base shadow-sm transition-colors placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50 md:text-sm font-mono"
+          rows={rows || 8}
+          className="flex w-full rounded-xl border border-input/90 bg-background px-3.5 py-2.5 text-sm shadow-2xs transition-all duration-150 placeholder:text-muted-foreground hover:border-border focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/30 focus-visible:border-ring disabled:cursor-not-allowed disabled:opacity-50 font-mono leading-relaxed"
         />
       ) : (
         <input
           ref={inputRef as React.RefObject<HTMLInputElement>}
           {...commonProps}
-          className="flex w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-sm transition-colors placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50 font-mono"
+          className="flex w-full rounded-xl border border-input/90 bg-background px-3.5 py-2.5 text-sm shadow-2xs transition-all duration-150 placeholder:text-muted-foreground hover:border-border focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/30 focus-visible:border-ring disabled:cursor-not-allowed disabled:opacity-50"
         />
       )}
       {showDropdown && filtered.length > 0 && (
         <div
           ref={dropdownRef}
-          className="absolute z-50 mt-1 w-64 max-h-48 overflow-y-auto rounded-md border bg-popover shadow-md"
+          className="absolute z-50 mt-1 w-64 max-h-52 overflow-y-auto rounded-xl border border-border/80 bg-popover/95 backdrop-blur-md p-1 shadow-lg animate-in fade-in-50 zoom-in-95 duration-150"
         >
+          <div className="px-2.5 py-1 text-[10px] uppercase font-semibold text-muted-foreground tracking-wider border-b border-border/40 mb-1">
+            Insert Column Tag
+          </div>
           {filtered.map((col, i) => (
             <button
               key={col}
               type="button"
-              className={`w-full text-left px-3 py-1.5 text-sm font-mono hover:bg-accent ${
-                i === selectedIdx ? "bg-accent text-accent-foreground" : ""
+              className={`w-full flex items-center justify-between px-2.5 py-1.5 rounded-lg text-xs font-mono transition-colors text-left ${
+                i === selectedIdx
+                  ? "bg-primary text-primary-foreground font-semibold"
+                  : "text-foreground hover:bg-muted/80"
               }`}
               onMouseDown={(e) => {
                 e.preventDefault();
@@ -156,7 +161,10 @@ export const PlaceholderAutocomplete = memo(function PlaceholderAutocomplete({
               }}
               onMouseEnter={() => setSelectedIdx(i)}
             >
-              {'{{' + col + '}}'}
+              <span>{'{{' + col + '}}'}</span>
+              <span className={`text-[10px] ${i === selectedIdx ? "text-primary-foreground/70" : "text-muted-foreground"}`}>
+                Tab
+              </span>
             </button>
           ))}
         </div>

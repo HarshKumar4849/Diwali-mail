@@ -1,5 +1,13 @@
 import { Client } from "@microsoft/microsoft-graph-client";
-import { createGraphClient, isGraph401, getValidAccessToken } from "@/lib/graph/client";
+import {
+  createGraphClient,
+  isGraph401,
+  getValidAccessToken,
+  isGraphThrottled,
+  extractRetryAfterSeconds,
+  setMailboxThrottledUntil,
+  getMailboxThrottledUntil,
+} from "@/lib/graph/client";
 import { renderTemplate, compileTemplate } from "@/lib/email/template";
 import { createClient } from "@/lib/supabase/server";
 import type { SupabaseClient } from "@supabase/supabase-js";
@@ -141,21 +149,53 @@ export async function sendEmail({ campaign, recipient, globalAttachments, supaba
     console.log(`[sendEmail] No attachments to attach for ${recipient.email}`);
   }
 
+  // Check if mailbox has an active throttling cooldown
+  const throttledUntil = getMailboxThrottledUntil(campaign.user_id);
+  const cooldownWaitMs = throttledUntil - Date.now();
+  if (cooldownWaitMs > 0) {
+    console.log(
+      `[sendEmail] Mailbox is in throttling cooldown for user ${campaign.user_id}. Waiting ${Math.ceil(cooldownWaitMs / 1000)}s before dispatching to ${recipient.email}...`
+    );
+    await new Promise((resolve) => setTimeout(resolve, cooldownWaitMs));
+  }
+
   console.log(`[sendEmail] Sending email to ${recipient.email}`);
-  try {
-    await graphClient.api("/me/sendMail").post({ message, saveToSentItems: true });
-  } catch (err: unknown) {
-    if (isGraph401(err)) {
-      console.log(`[sendEmail] Graph returned 401 for ${recipient.email}. Refreshing token and retrying once...`);
-      const freshToken = await getValidAccessToken(campaign.user_id, supabase, true);
-      const retryClient = Client.initWithMiddleware({
-        authProvider: {
-          getAccessToken: async () => freshToken,
-        },
-      });
-      await retryClient.api("/me/sendMail").post({ message, saveToSentItems: true });
-      console.log(`[sendEmail] Retry after token refresh succeeded for ${recipient.email}`);
-    } else {
+
+  const MAX_THROTTLE_RETRIES = 3;
+  let attempt = 0;
+
+  while (true) {
+    attempt++;
+    try {
+      await graphClient.api("/me/sendMail").post({ message, saveToSentItems: true });
+      break;
+    } catch (err: unknown) {
+      if (isGraph401(err) && attempt === 1) {
+        console.log(`[sendEmail] Graph returned 401 for ${recipient.email}. Refreshing token and retrying once...`);
+        const freshToken = await getValidAccessToken(campaign.user_id, supabase, true);
+        const retryClient = Client.initWithMiddleware({
+          authProvider: {
+            getAccessToken: async () => freshToken,
+          },
+        });
+        await retryClient.api("/me/sendMail").post({ message, saveToSentItems: true });
+        console.log(`[sendEmail] Retry after token refresh succeeded for ${recipient.email}`);
+        break;
+      }
+
+      if (isGraphThrottled(err) && attempt <= MAX_THROTTLE_RETRIES) {
+        const retryAfterSeconds = extractRetryAfterSeconds(err, attempt * 5);
+        const retryAfterMs = retryAfterSeconds * 1000;
+        // Mark mailbox cooldown so concurrent sends on this mailbox pause appropriately
+        setMailboxThrottledUntil(campaign.user_id, Date.now() + retryAfterMs);
+
+        console.warn(
+          `[sendEmail] Microsoft Graph throttling (429/503) for ${recipient.email}. Attempt ${attempt}/${MAX_THROTTLE_RETRIES}. Waiting ${retryAfterSeconds}s (Retry-After)...`
+        );
+        await new Promise((resolve) => setTimeout(resolve, retryAfterMs));
+        continue;
+      }
+
       throw err;
     }
   }

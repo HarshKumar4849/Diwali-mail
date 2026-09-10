@@ -7,7 +7,7 @@ import { LayoutDashboard, Plus, Settings } from "lucide-react";
 
 const tabs = [
   { href: "/", label: "Dashboard", icon: LayoutDashboard },
-  { href: "/campaign/new", label: "New", icon: Plus },
+  { href: "/campaign/new", label: "New Campaign", icon: Plus },
   { href: "/settings", label: "Settings", icon: Settings },
 ];
 
@@ -20,8 +20,8 @@ export function BottomNav() {
   }
 
   return (
-    <nav className="fixed bottom-0 left-0 right-0 z-50 border-t bg-background pb-safe md:hidden">
-      <div className="flex">
+    <nav className="fixed bottom-0 left-0 right-0 z-50 border-t border-border/80 bg-background/95 backdrop-blur-md pb-safe md:hidden shadow-lg">
+      <div className="flex items-center justify-around px-2 py-1.5">
         {tabs.map((tab) => {
           const Icon = tab.icon;
           const isActive = pathname === tab.href;
@@ -30,14 +30,14 @@ export function BottomNav() {
               key={tab.href}
               href={tab.href}
               className={cn(
-                "flex flex-1 flex-col items-center gap-0.5 py-2 text-xs transition-colors",
+                "flex flex-1 flex-col items-center justify-center py-1 px-3 rounded-lg text-[11px] font-medium active:scale-95 transition-all duration-150",
                 isActive
-                  ? "text-primary"
+                  ? "text-primary bg-primary/10 font-semibold"
                   : "text-muted-foreground hover:text-foreground"
               )}
             >
-              <Icon className="size-5" />
-              {tab.label}
+              <Icon className={cn("size-5 mb-0.5 transition-transform duration-150", isActive ? "text-primary stroke-[2.2] scale-105" : "text-muted-foreground")} />
+              <span>{tab.label}</span>
             </Link>
           );
         })}
