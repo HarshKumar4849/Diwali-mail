@@ -1,6 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { sendEmail } from "@/lib/email/send";
+import { getCampaignRateLimiter, cleanupCampaignRateLimiter } from "@/lib/campaign/rate-limiter";
 import type { SupabaseClient } from "@supabase/supabase-js";
 
 function delay(ms: number) {
@@ -11,19 +12,19 @@ function delay(ms: number) {
 // Tracks which campaigns currently have an active background worker running.
 const activeProcessors = new Set<string>();
 
-// Global Microsoft Graph request pacer.
-// Ensures calls to Microsoft Graph across all concurrent campaigns maintain safe spacing
-// to prevent rate-limit request storms on the user's mailbox.
-let lastGraphCallTimestamp = 0;
-const MIN_GRAPH_REQUEST_INTERVAL_MS = 250;
+// Mailbox-level micro-pacer (per connected Microsoft user account).
+// Prevents concurrent campaigns connected to the same mailbox from flooding the socket/API simultaneously.
+const mailboxLastCallTimestamps = new Map<string, number>();
+const MIN_MAILBOX_REQUEST_INTERVAL_MS = 150;
 
-async function paceGraphRequest(): Promise<void> {
+async function paceMailboxRequest(userId: string): Promise<void> {
   const now = Date.now();
-  const elapsed = now - lastGraphCallTimestamp;
-  if (elapsed < MIN_GRAPH_REQUEST_INTERVAL_MS) {
-    await delay(MIN_GRAPH_REQUEST_INTERVAL_MS - elapsed);
+  const lastTime = mailboxLastCallTimestamps.get(userId) || 0;
+  const elapsed = now - lastTime;
+  if (elapsed < MIN_MAILBOX_REQUEST_INTERVAL_MS) {
+    await delay(MIN_MAILBOX_REQUEST_INTERVAL_MS - elapsed);
   }
-  lastGraphCallTimestamp = Date.now();
+  mailboxLastCallTimestamps.set(userId, Date.now());
 }
 
 /**
@@ -65,6 +66,7 @@ export async function startCampaignProcessor(
       console.error(`[processor] Fatal error in campaign ${campaignId}:`, err);
     } finally {
       activeProcessors.delete(campaignId);
+      cleanupCampaignRateLimiter(campaignId);
       console.log(`[processor] Processor finished for campaign ${campaignId}. Active campaigns remaining: ${activeProcessors.size}`);
     }
   })();
@@ -116,11 +118,11 @@ async function runCampaignLoop(campaignId: string, client?: SupabaseClient): Pro
     .eq("campaign_id", campaignId)
     .eq("type", "global");
 
-  const rateLimit = campaign.rate_limit && campaign.rate_limit > 0 ? campaign.rate_limit : 20;
-  const delayMs = Math.max(250, Math.floor(60000 / rateLimit));
+  const campaignRateLimit = campaign.rate_limit && campaign.rate_limit > 0 ? campaign.rate_limit : 20;
+  const rateLimiter = getCampaignRateLimiter(campaignId, campaignRateLimit);
   const batchSize = 10;
 
-  console.log(`[processor] Campaign ${campaignId}: starting loop (rateLimit=${rateLimit}/min, delayMs=${delayMs}ms)`);
+  console.log(`[processor] Campaign ${campaignId}: starting loop (rateLimit=${campaignRateLimit}/min)`);
 
   let consecutiveEmptyBatches = 0;
 
@@ -183,6 +185,9 @@ async function runCampaignLoop(campaignId: string, client?: SupabaseClient): Pro
 
     // 3. Process each recipient in the batch with atomic claiming
     for (const recipient of pending) {
+      // Independent per-campaign rate limiter: wait for this campaign's eligible send window
+      await rateLimiter.waitForNextSend();
+
       // Atomic claim: Only proceed if status is still 'pending'
       const { data: claimed, error: claimErr } = await supabase
         .from("recipients")
@@ -197,8 +202,8 @@ async function runCampaignLoop(campaignId: string, client?: SupabaseClient): Pro
         continue;
       }
 
-      // Respect global Graph pacer to avoid API request storms across concurrent campaigns
-      await paceGraphRequest();
+      // Mailbox-level micro-pacing to avoid simultaneous socket floods to Microsoft Graph
+      await paceMailboxRequest(campaign.user_id);
 
       try {
         await sendEmail({
@@ -213,6 +218,9 @@ async function runCampaignLoop(campaignId: string, client?: SupabaseClient): Pro
           sent_at: new Date().toISOString(),
           error_message: "",
         }).eq("id", recipient.id);
+
+        // Record successful dispatch in this campaign's limiter
+        rateLimiter.recordSend();
 
         console.log(`[processor] Campaign ${campaignId}: sent to ${recipient.email}`);
       } catch (err: unknown) {
@@ -230,9 +238,6 @@ async function runCampaignLoop(campaignId: string, client?: SupabaseClient): Pro
           console.error(`[processor] Campaign ${campaignId}: failed for ${recipient.email} (retry ${retryCount}/3): ${errorMsg}`);
         }
       }
-
-      // Campaign-specific rate limit delay
-      await delay(delayMs);
     }
   }
 }

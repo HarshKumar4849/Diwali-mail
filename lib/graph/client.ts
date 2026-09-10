@@ -12,27 +12,13 @@ const TOKEN_REFRESH_BUFFER_SECONDS = 300;
 // to Microsoft, preventing token rotation collisions and invalid_grant errors.
 const activeRefreshes = new Map<string, Promise<string>>();
 
-/**
- * Checks whether an error from Microsoft Graph is a 401 Unauthorized or expired token error.
- */
-export function isGraph401(err: unknown): boolean {
-  if (!err) return false;
-  const e = err as { statusCode?: number; code?: string; message?: string };
-  if (e.statusCode === 401) return true;
-  if (e.code === "InvalidAuthenticationToken") return true;
-  if (typeof e.message === "string") {
-    const msg = e.message.toLowerCase();
-    return (
-      msg.includes("401") ||
-      msg.includes("unauthorized") ||
-      msg.includes("invalidauthenticationtoken") ||
-      msg.includes("access token has expired") ||
-      msg.includes("lifetime validation failed") ||
-      msg.includes("compacttoken parsing failed")
-    );
-  }
-  return false;
-}
+export {
+  isGraph401,
+  isGraphThrottled,
+  extractRetryAfterSeconds,
+  setMailboxThrottledUntil,
+  getMailboxThrottledUntil,
+} from "./throttling";
 
 /**
  * Obtains a valid, unexpired Microsoft Graph access token for the given user.

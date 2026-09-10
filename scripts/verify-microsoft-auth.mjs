@@ -1,4 +1,4 @@
-import { isGraph401 } from "../lib/graph/client.ts";
+import { isGraph401 } from "../lib/graph/throttling.ts";
 
 function assert(condition, message) {
   if (!condition) {
