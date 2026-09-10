@@ -8,6 +8,7 @@ import { CampaignCard } from "@/components/campaign-card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ScrollReveal } from "@/components/ui/scroll-reveal";
+import { DeleteCampaignDialog } from "@/components/delete-campaign-dialog";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import {
@@ -61,16 +62,27 @@ export default function Dashboard() {
     }
   }, [session, hasActiveCampaigns]);
 
-  const handleDelete = async (e: React.MouseEvent, id: string) => {
+  const [campaignToDelete, setCampaignToDelete] = useState<Campaign | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
+
+  const handleDeleteClick = (e: React.MouseEvent, campaign: Campaign) => {
     e.stopPropagation();
-    if (!confirm("Delete this campaign? This cannot be undone.")) return;
+    setCampaignToDelete(campaign);
+  };
+
+  const confirmDelete = async () => {
+    if (!campaignToDelete) return;
+    setIsDeleting(true);
     try {
-      const res = await fetch(`/api/campaigns/${id}`, { method: "DELETE" });
+      const res = await fetch(`/api/campaigns/${campaignToDelete.id}`, { method: "DELETE" });
       if (!res.ok) throw new Error("Failed to delete");
-      setCampaigns((prev) => prev.filter((c) => c.id !== id));
+      setCampaigns((prev) => prev.filter((c) => c.id !== campaignToDelete.id));
       toast.success("Campaign deleted");
+      setCampaignToDelete(null);
     } catch (e: unknown) {
       toast.error(e instanceof Error ? e.message : "Failed to delete");
+    } finally {
+      setIsDeleting(false);
     }
   };
 
@@ -238,7 +250,7 @@ export default function Dashboard() {
                       e.stopPropagation();
                       router.push(`/campaign/edit/${c.id}`);
                     }}
-                    onDelete={(e) => handleDelete(e, c.id)}
+                    onDelete={(e) => handleDeleteClick(e, c)}
                     onClone={async (e) => {
                       e.stopPropagation();
                       try {
@@ -291,6 +303,16 @@ export default function Dashboard() {
       >
         <Plus className="size-6" />
       </Button>
+
+      <DeleteCampaignDialog
+        open={campaignToDelete !== null}
+        onOpenChange={(open) => {
+          if (!open) setCampaignToDelete(null);
+        }}
+        campaignName={campaignToDelete?.name}
+        onConfirm={confirmDelete}
+        isDeleting={isDeleting}
+      />
     </div>
   );
 }
