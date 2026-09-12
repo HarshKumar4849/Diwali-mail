@@ -4,6 +4,8 @@ import { useState, useRef, KeyboardEvent, ChangeEvent } from "react";
 import { Badge } from "@/components/ui/badge";
 import { XIcon } from "lucide-react";
 
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
 export function EmailInput({
   value,
   onChange,
@@ -18,12 +20,25 @@ export function EmailInput({
 
   const emails = value ? value.split(",").map(e => e.trim()).filter(Boolean) : [];
 
-  const addEmail = (email: string) => {
-    const trimmed = email.trim();
-    if (trimmed) {
-      const all = [...emails, trimmed];
+  const addEmail = (rawText: string): boolean => {
+    const candidates = rawText
+      .split(/[,;]+/)
+      .map(e => e.trim())
+      .filter(Boolean);
+
+    const newValid = candidates.filter(
+      cand =>
+        EMAIL_RE.test(cand) &&
+        !emails.some(existing => existing.toLowerCase() === cand.toLowerCase())
+    );
+
+    if (newValid.length > 0) {
+      const uniqueNew = Array.from(new Set(newValid));
+      const all = [...emails, ...uniqueNew];
       onChange(all.join(", "));
+      return true;
     }
+    return false;
   };
 
   const removeEmail = (index: number) => {
@@ -32,10 +47,12 @@ export function EmailInput({
   };
 
   const handleKeyDown = (e: KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === "," || e.key === "Enter") {
+    if (e.key === "," || e.key === ";" || e.key === "Enter") {
       e.preventDefault();
-      addEmail(input);
-      setInput("");
+      if (input.trim()) {
+        addEmail(input);
+        setInput("");
+      }
     } else if (e.key === "Backspace" && !input && emails.length > 0) {
       removeEmail(emails.length - 1);
     }
@@ -43,14 +60,25 @@ export function EmailInput({
 
   const handleChange = (e: ChangeEvent<HTMLInputElement>) => {
     const val = e.target.value;
-    if (val.includes(",")) {
-      const parts = val.split(",");
+    if (val.includes(",") || val.includes(";")) {
+      const parts = val.split(/[,;]/);
       const current = parts.pop() || "";
-      const all = [...emails, ...parts.map(p => p.trim()).filter(Boolean)];
-      onChange(all.join(", "));
+      const toAdd = parts.map(p => p.trim()).filter(Boolean);
+      if (toAdd.length > 0) {
+        addEmail(toAdd.join(", "));
+      }
       setInput(current);
     } else {
       setInput(val);
+    }
+  };
+
+  const handleBlur = () => {
+    if (input.trim()) {
+      const added = addEmail(input);
+      if (added) {
+        setInput("");
+      }
     }
   };
 
@@ -77,6 +105,7 @@ export function EmailInput({
         value={input}
         onChange={handleChange}
         onKeyDown={handleKeyDown}
+        onBlur={handleBlur}
         placeholder={emails.length === 0 ? placeholder : ""}
         className="flex-1 min-w-[120px] bg-transparent outline-none text-sm"
       />
