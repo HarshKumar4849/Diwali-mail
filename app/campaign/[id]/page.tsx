@@ -10,6 +10,7 @@ import { RecipientTable } from "@/components/recipient-table";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { ScrollReveal } from "@/components/ui/scroll-reveal";
+import { DeleteCampaignDialog } from "@/components/delete-campaign-dialog";
 import { toast } from "sonner";
 import {
   ArrowLeft,
@@ -199,15 +200,21 @@ export default function CampaignDetail() {
     }
   };
 
-  const handleDelete = async () => {
-    if (!confirm("Delete this campaign? This cannot be undone.")) return;
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
+
+  const confirmDelete = async () => {
+    setIsDeleting(true);
     try {
       const res = await fetch(`/api/campaigns/${id}`, { method: "DELETE" });
       if (!res.ok) throw new Error("Failed to delete");
       toast.success("Campaign deleted");
+      setDeleteDialogOpen(false);
       router.push("/");
     } catch (e: unknown) {
       toast.error(e instanceof Error ? e.message : "Failed to delete");
+    } finally {
+      setIsDeleting(false);
     }
   };
 
@@ -310,10 +317,9 @@ export default function CampaignDetail() {
               <span>{sending ? "Working..." : "Retry Failed Recipients"}</span>
             </Button>
           )}
-
           <Button
             variant="ghost"
-            onClick={handleDelete}
+            onClick={() => setDeleteDialogOpen(true)}
             className="text-destructive/80 hover:text-destructive hover:bg-destructive/10 gap-1.5"
           >
             <Trash2 className="size-4" />
@@ -323,28 +329,27 @@ export default function CampaignDetail() {
       </div>
 
       {error && (
-        <div className="mb-6 p-4 rounded-xl border border-destructive/20 bg-destructive/5 text-destructive text-sm flex items-center gap-2">
-          <AlertCircle className="size-4 shrink-0" />
+        <div className="mb-6 p-4 rounded-xl border border-destructive/30 bg-destructive/5 text-destructive text-sm flex items-center justify-between shadow-xs">
           <span>{error}</span>
+          <Button variant="ghost" size="sm" onClick={() => setError("")} className="h-7 text-xs">
+            Dismiss
+          </Button>
         </div>
       )}
 
-      {/* Main Grid: Left Metrics + Right Recipient Table */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
-        {/* Left Column: Progress & Campaign Details */}
-        <div className="lg:col-span-1 lg:sticky lg:top-20 space-y-5">
-          {/* Progress Card */}
+      {/* Main Campaign Grid */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {/* Left Column: Metrics & Config */}
+        <div className="space-y-6">
           <div className="rounded-xl border border-border/70 bg-card p-5 shadow-xs space-y-4">
-            <h3 className="font-semibold text-foreground uppercase tracking-wider text-xs">
+            <h2 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
               Delivery Progress
-            </h3>
-
-            <ProgressBar sent={sent} total={total} failed={failed} />
-
-            <div className="grid grid-cols-3 gap-2 pt-2 border-t border-border/50 text-center">
-              <div className="p-2 rounded-lg bg-muted/30">
-                <p className="text-[11px] text-muted-foreground font-medium">Pending</p>
-                <p className="text-base font-bold text-foreground tabular-nums mt-0.5">{pending}</p>
+            </h2>
+            <ProgressBar total={total} sent={sent} failed={failed} />
+            <div className="grid grid-cols-3 gap-2 pt-1 text-center">
+              <div className="p-2 rounded-lg bg-muted/50 text-muted-foreground">
+                <p className="text-[11px] font-medium">Pending</p>
+                <p className="text-base font-bold tabular-nums mt-0.5">{pending}</p>
               </div>
               <div className="p-2 rounded-lg bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300">
                 <p className="text-[11px] font-medium">Sent</p>
@@ -356,7 +361,7 @@ export default function CampaignDetail() {
               </div>
             </div>
           </div>
-
+          
           {/* Subject Line Card */}
           <div className="rounded-xl border border-border/70 bg-card p-5 shadow-xs space-y-2">
             <div className="flex items-center gap-1.5 text-xs text-muted-foreground font-semibold uppercase tracking-wider">
@@ -374,6 +379,14 @@ export default function CampaignDetail() {
           <RecipientTable recipients={recipients} />
         </ScrollReveal>
       </div>
+
+      <DeleteCampaignDialog
+        open={deleteDialogOpen}
+        onOpenChange={setDeleteDialogOpen}
+        campaignName={campaign.name}
+        onConfirm={confirmDelete}
+        isDeleting={isDeleting}
+      />
     </div>
   );
 }
