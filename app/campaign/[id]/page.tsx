@@ -61,6 +61,12 @@ export default function CampaignDetail() {
   const router = useRouter();
 
   useEffect(() => {
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (!session) router.push("/login");
+    });
+  }, [router, supabase]);
+
+  useEffect(() => {
     fetch(`/api/campaigns/${id}`)
       .then((r) => {
         if (!r.ok) throw new Error("Failed to load campaign");
@@ -166,7 +172,10 @@ export default function CampaignDetail() {
     setError("");
     try {
       const res = await fetch(`/api/campaigns/${id}/send`, { method: "POST" });
-      if (!res.ok) throw new Error("Failed to start sending");
+      if (!res.ok) {
+        const errData = await res.json().catch(() => ({}));
+        throw new Error(errData.error || "Failed to start sending");
+      }
       setCampaign((prev) => (prev ? { ...prev, status: "sending" } : prev));
       toast.success("Campaign queued for sending");
     } catch (e: unknown) {
@@ -183,7 +192,10 @@ export default function CampaignDetail() {
     setError("");
     try {
       const res = await fetch(`/api/campaigns/${id}/retry`, { method: "POST" });
-      if (!res.ok) throw new Error("Failed to retry");
+      if (!res.ok) {
+        const errData = await res.json().catch(() => ({}));
+        throw new Error(errData.error || "Failed to retry");
+      }
       const data = await res.json();
       setCampaign((prev) => (prev ? { ...prev, status: data.status } : prev));
       if (data.status === "draft") {

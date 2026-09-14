@@ -29,12 +29,18 @@ export function StepReview({
 
   useEffect(() => {
     fetch("/api/auth/microsoft/status")
-      .then((r) => r.json())
+      .then((r) => {
+        if (!r.ok) throw new Error("Status check failed");
+        return r.json();
+      })
       .then((d) => {
-        setConnected(d.connected);
+        setConnected(Boolean(d.connected));
         setEmail(d.email || "");
       })
-      .catch(() => setConnected(false));
+      .catch(() => {
+        setConnected(false);
+        setEmail("");
+      });
   }, []);
 
   const recipientCount = data.csvRows?.length || 0;
@@ -144,6 +150,19 @@ export function StepReview({
           </div>
         </div>
       </ScrollReveal>
+
+      {connected === false && (
+        <div className="rounded-xl border border-amber-200 bg-amber-50/70 dark:bg-amber-950/30 p-4 text-amber-800 dark:text-amber-200 flex items-start gap-3 text-xs">
+          <AlertCircle className="size-4 shrink-0 mt-0.5" />
+          <div>
+            <p className="font-semibold">Microsoft account connection required before sending</p>
+            <p className="mt-0.5 text-amber-700 dark:text-amber-300">
+              You can save this campaign as a draft, but you must connect your Outlook account in{" "}
+              <Link href="/settings" className="underline font-semibold">Settings</Link> before dispatching emails.
+            </p>
+          </div>
+        </div>
+      )}
 
       {/* Email Sample Preview */}
       {data.csvRows?.[0] && (

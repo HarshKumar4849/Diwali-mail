@@ -15,22 +15,36 @@ import {
   ShieldCheck,
   Power,
   KeyRound,
+  User,
+  LogOut,
 } from "lucide-react";
 
 function SettingsInner() {
   const [connected, setConnected] = useState<boolean | null>(null);
   const [email, setEmail] = useState("");
+  const [userEmail, setUserEmail] = useState<string | null>(null);
   const searchParams = useSearchParams();
   const error = searchParams.get("error");
 
   useEffect(() => {
+    const supabase = createClient();
+    supabase.auth.getUser().then(({ data: { user } }) => {
+      setUserEmail(user?.email || null);
+    });
+
     fetch("/api/auth/microsoft/status")
-      .then((r) => r.json())
+      .then((r) => {
+        if (!r.ok) throw new Error("Status check failed");
+        return r.json();
+      })
       .then((data) => {
-        setConnected(data.connected);
+        setConnected(Boolean(data.connected));
         setEmail(data.email || "");
       })
-      .catch(() => setConnected(false));
+      .catch(() => {
+        setConnected(false);
+        setEmail("");
+      });
   }, []);
 
   const handleConnect = () => {
@@ -47,6 +61,12 @@ function SettingsInner() {
     await supabase.from("microsoft_tokens").delete().eq("user_id", user.id);
     setConnected(false);
     setEmail("");
+  };
+
+  const handleSignOut = async () => {
+    const supabase = createClient();
+    await supabase.auth.signOut();
+    window.location.href = "/login";
   };
 
   return (
@@ -140,6 +160,42 @@ function SettingsInner() {
               </Button>
             </div>
           )}
+        </div>
+      </ScrollReveal>
+
+      {/* Mailcraft Account Section */}
+      <ScrollReveal variant="card">
+        <div className="rounded-2xl border border-border/70 bg-card p-6 md:p-8 shadow-xs space-y-4">
+          <div className="flex items-start justify-between gap-4">
+            <div className="space-y-1">
+              <div className="flex items-center gap-2.5">
+                <div className="size-9 rounded-lg bg-primary/10 text-primary flex items-center justify-center">
+                  <User className="size-5" />
+                </div>
+                <h2 className="text-lg font-bold text-foreground">Mailcraft User Account</h2>
+              </div>
+              <p className="text-xs text-muted-foreground max-w-xl">
+                Current authenticated application session.
+              </p>
+            </div>
+          </div>
+
+          <div className="p-4 rounded-xl bg-muted/30 border border-border/50 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div>
+              <p className="text-xs text-muted-foreground">Logged-In User</p>
+              <p className="text-sm font-bold text-foreground mt-0.5">{userEmail || "Signed in"}</p>
+            </div>
+
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleSignOut}
+              className="text-destructive/80 hover:text-destructive hover:bg-destructive/10 gap-1.5 text-xs h-9 shrink-0"
+            >
+              <LogOut className="size-3.5" />
+              <span>Log Out of Mailcraft</span>
+            </Button>
+          </div>
         </div>
       </ScrollReveal>
     </div>
