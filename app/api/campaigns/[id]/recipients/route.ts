@@ -10,6 +10,14 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
   const { user } = await getAuthenticatedUser();
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
+  const { data: campaign } = await supabase
+    .from("campaigns")
+    .select("id")
+    .eq("id", id)
+    .eq("user_id", user.id)
+    .single();
+  if (!campaign) return NextResponse.json({ error: "Not found" }, { status: 404 });
+
   const { data, error } = await supabase
     .from("recipients")
     .select("*")

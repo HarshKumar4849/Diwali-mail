@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Wizard } from "@/components/campaign-wizard/wizard";
 import { StepSetup } from "@/components/campaign-wizard/step-setup";
 import { StepTemplate } from "@/components/campaign-wizard/step-template";
@@ -9,12 +9,20 @@ import { StepRecipients } from "@/components/campaign-wizard/step-recipients";
 import { StepSendConfig } from "@/components/campaign-wizard/step-send-config";
 import { StepReview } from "@/components/campaign-wizard/step-review";
 import { useRouter } from "next/navigation";
+import { createClient } from "@/lib/supabase/client";
 import type { WizardData } from "@/types";
 
 export default function NewCampaign() {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+
+  useEffect(() => {
+    const supabase = createClient();
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (!session) router.push("/login");
+    });
+  }, [router]);
 
   const handleComplete = async (data: WizardData) => {
     setLoading(true);

@@ -35,6 +35,7 @@ export async function GET() {
 
   return NextResponse.json({
     connected,
-    email: data.microsoft_email || user.email || "",
+    email: connected ? (data.microsoft_email || "") : "",
   });
 }
+

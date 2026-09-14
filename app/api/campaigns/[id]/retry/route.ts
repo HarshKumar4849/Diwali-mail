@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { startCampaignProcessor } from "@/lib/campaign/processor";
+import { getValidAccessToken } from "@/lib/graph/client";
 
 export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const supabase = await createClient();
@@ -22,6 +23,17 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     return NextResponse.json({ status: "draft" });
   }
 
+  // Verify server-side Microsoft authorization before retrying send
+  try {
+    await getValidAccessToken(user.id, supabase);
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : "Microsoft account connection required before sending email.";
+    return NextResponse.json(
+      { error: "Microsoft account connection required before sending email.", details: message },
+      { status: 403 }
+    );
+  }
+
   await supabase.from("recipients").update({
     status: "pending",
     error_message: "",
@@ -35,3 +47,4 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
 
   return NextResponse.json({ status: "sending" });
 }
+

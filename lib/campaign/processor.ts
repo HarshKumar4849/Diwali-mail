@@ -2,6 +2,7 @@ import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { sendEmail } from "@/lib/email/send";
 import { getCampaignRateLimiter, cleanupCampaignRateLimiter } from "@/lib/campaign/rate-limiter";
+import { getValidAccessToken } from "@/lib/graph/client";
 import type { SupabaseClient } from "@supabase/supabase-js";
 
 function delay(ms: number) {
@@ -103,6 +104,15 @@ async function runCampaignLoop(campaignId: string, client?: SupabaseClient): Pro
 
   if (campaign.status === "done") {
     console.log(`[processor] Campaign ${campaignId} is already done`);
+    return;
+  }
+
+  // Pre-flight authorization check: ensure the campaign owner has an active, valid Microsoft connection
+  try {
+    await getValidAccessToken(campaign.user_id, supabase);
+  } catch (authErr) {
+    console.error(`[processor] Campaign ${campaignId}: Microsoft authorization check failed for user ${campaign.user_id}:`, authErr);
+    await supabase.from("campaigns").update({ status: "draft" }).eq("id", campaignId);
     return;
   }
 

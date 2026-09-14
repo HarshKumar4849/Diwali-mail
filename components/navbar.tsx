@@ -1,9 +1,11 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { cn } from "@/lib/utils";
-import { Mail, LayoutDashboard, Plus, Settings, User } from "lucide-react";
+import { createClient } from "@/lib/supabase/client";
+import { Mail, LayoutDashboard, Plus, Settings, User, LogOut } from "lucide-react";
 
 const navLinks = [
   { href: "/", label: "Dashboard", icon: LayoutDashboard },
@@ -13,6 +15,29 @@ const navLinks = [
 
 export function Navbar() {
   const pathname = usePathname();
+  const router = useRouter();
+  const [userEmail, setUserEmail] = useState<string | null>(null);
+
+  useEffect(() => {
+    const supabase = createClient();
+    supabase.auth.getUser().then(({ data: { user } }) => {
+      setUserEmail(user?.email || null);
+    });
+
+    const { data: authListener } = supabase.auth.onAuthStateChange((_event, session) => {
+      setUserEmail(session?.user?.email || null);
+    });
+
+    return () => {
+      authListener.subscription.unsubscribe();
+    };
+  }, []);
+
+  const handleSignOut = async () => {
+    const supabase = createClient();
+    await supabase.auth.signOut();
+    router.push("/login");
+  };
 
   // Hide on login screen
   if (pathname === "/login") return null;
@@ -72,10 +97,22 @@ export function Navbar() {
           <Link
             href="/settings"
             className="flex items-center gap-2 px-3 py-1.5 rounded-lg border border-border/70 bg-background/80 hover:bg-muted/60 text-xs font-medium text-muted-foreground hover:text-foreground active:scale-[0.98] transition-all duration-150"
+            title={userEmail || "Account Settings"}
           >
             <User className="size-3.5 text-muted-foreground" />
-            <span>Account</span>
+            <span className="max-w-[140px] truncate">{userEmail || "Account"}</span>
           </Link>
+
+          {userEmail && (
+            <button
+              onClick={handleSignOut}
+              className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border border-border/70 bg-background/80 hover:bg-destructive/10 hover:text-destructive hover:border-destructive/30 text-xs font-medium text-muted-foreground active:scale-[0.98] transition-all duration-150 cursor-pointer"
+              title="Sign Out"
+            >
+              <LogOut className="size-3.5" />
+              <span>Logout</span>
+            </button>
+          )}
         </div>
       </div>
     </header>
