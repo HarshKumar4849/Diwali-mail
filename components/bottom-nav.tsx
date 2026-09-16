@@ -14,8 +14,8 @@ const tabs = [
 export function BottomNav() {
   const pathname = usePathname();
 
-  // Hide bottom nav on login and campaign detail sub-views
-  if (pathname === "/login" || (pathname.startsWith("/campaign/") && pathname !== "/campaign/new")) {
+  // Hide bottom nav on login and campaign wizard / detail sub-views
+  if (pathname === "/login" || pathname.startsWith("/campaign")) {
     return null;
   }
 

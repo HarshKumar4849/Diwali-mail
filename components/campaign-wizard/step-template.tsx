@@ -17,6 +17,7 @@ import {
   Mail,
   Tag,
   Code,
+  Link as LinkIcon,
 } from "lucide-react";
 
 function highlightPlaceholders(text: string): string {
@@ -54,8 +55,8 @@ export function StepTemplate({
       const html = await docxToHtml(file);
       updateData({ body_template: html });
     } catch (err) {
-      console.error("Failed to convert .docx:", err);
-      alert("Failed to convert the Word document. Make sure it's a valid .docx file.");
+      console.error("Failed to convert document:", err);
+      alert("Failed to convert the document. Make sure it's a valid .docx or HTML file.");
     } finally {
       setConverting(false);
     }
@@ -65,6 +66,15 @@ export function StepTemplate({
     const current = data.body_template || "";
     const insert = `{{${col}}}`;
     updateData({ body_template: current + insert });
+  };
+
+  const handleInsertLink = () => {
+    const url = prompt("Enter the link URL (e.g. https://example.com):", "https://");
+    if (!url || url.trim() === "" || url === "https://") return;
+    const text = prompt("Enter the display text for this link (leave empty to use URL):", "") || url.trim();
+    const linkHtml = `<a href="${url.trim()}">${text.trim()}</a>`;
+    const current = data.body_template || "";
+    updateData({ body_template: current ? `${current} ${linkHtml}` : linkHtml });
   };
 
   return (
@@ -84,7 +94,7 @@ export function StepTemplate({
         </p>
       </div>
 
-      {/* Merge Tags & Word Document Import Bar */}
+      {/* Merge Tags & Document Import Bar */}
       <div className="p-4 rounded-xl border border-border/70 bg-muted/20 space-y-3">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div className="flex items-center gap-2">
@@ -94,14 +104,30 @@ export function StepTemplate({
             </span>
           </div>
 
-          {/* Word Import Action */}
+          {/* Quick Actions (Insert Link & Document Import) */}
           <div className="flex items-center gap-2">
+            <Button
+              type="button"
+              variant="outline"
+              size="xs"
+              onClick={handleInsertLink}
+              className="gap-1.5 text-xs h-7"
+              title="Insert a clickable link"
+            >
+              <LinkIcon className="size-3 text-primary" />
+              <span>Insert Link</span>
+            </Button>
+
             <input
               ref={docxRef}
               type="file"
-              accept=".docx"
+              accept=".docx,.html,.htm"
               className="hidden"
-              onChange={(e) => e.target.files?.[0] && handleDocx(e.target.files[0])}
+              onChange={(e) => {
+                const file = e.target.files?.[0];
+                if (file) handleDocx(file);
+                if (docxRef.current) docxRef.current.value = "";
+              }}
               disabled={converting}
             />
             <Button
@@ -113,7 +139,7 @@ export function StepTemplate({
               className="gap-1.5 text-xs h-7"
             >
               <Upload className="size-3" />
-              <span>{converting ? "Importing..." : "Import from .docx"}</span>
+              <span>{converting ? "Importing..." : "Import from .docx / .html"}</span>
             </Button>
           </div>
         </div>
