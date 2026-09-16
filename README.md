@@ -35,3 +35,10 @@ The easiest way to deploy your Next.js app is to use the [Vercel Platform](https
 
 Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
 
+## Release Updates (v0.1.1)
+
+- **DOCX List Preservation**: Multi-level hierarchical list parser preserving both unordered bullet lists (`<ul><li>`) and ordered numbered lists (`<ol><li>`).
+- **Emoji Section Headers**: Preserves numbered sections (`1️⃣`, `2️⃣`, `3️⃣`) and icon headers as distinct bold headings without excessive gaps.
+- **Corporate Email Styling**: Standardized `#0066cc` blue underline hyperlinks and safe entity encoding across all templates.
+- **Campaign Wizard Navigation**: Always-visible bottom controls with step progress indicators and quick actions.
+
