@@ -58,10 +58,10 @@ export function Wizard({
   const CurrentStep = steps[currentStep];
 
   return (
-    <div className="max-w-4xl mx-auto px-4 py-6 md:py-8 pb-28 md:pb-12">
-      {/* Stepper Header */}
+    <div className="max-w-4xl mx-auto px-4 py-6 md:py-8 pb-12">
+      {/* Stepper Header — Clickable Tabs */}
       <div className="mb-8">
-        {/* Desktop Stepper */}
+        {/* Desktop Stepper — Interactive Clickable Tabs */}
         <nav aria-label="Progress" className="hidden sm:block">
           <ol className="flex items-center justify-between">
             {steps.map((step, i) => {
@@ -70,15 +70,20 @@ export function Wizard({
 
               return (
                 <li key={step.title} className="relative flex-1 flex items-center">
-                  <div className="flex flex-col items-center gap-2 group flex-1">
+                  <button
+                    type="button"
+                    onClick={() => setCurrentStep(i)}
+                    className="flex flex-col items-center gap-2 group flex-1 cursor-pointer transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-primary rounded-lg p-1"
+                    title={`Click to jump to Step ${i + 1}: ${step.title}`}
+                  >
                     <div
                       className={cn(
-                        "size-9 rounded-full flex items-center justify-center text-xs font-semibold transition-all duration-200 shadow-2xs",
+                        "size-9 rounded-full flex items-center justify-center text-xs font-semibold transition-all duration-200 shadow-2xs group-hover:scale-105",
                         isCompleted
-                          ? "bg-primary text-primary-foreground shadow-xs"
+                          ? "bg-primary text-primary-foreground shadow-xs group-hover:bg-primary/90"
                           : isCurrent
                           ? "bg-primary/10 text-primary border-2 border-primary ring-4 ring-primary/15"
-                          : "bg-muted/70 text-muted-foreground border border-border/60"
+                          : "bg-muted/70 text-muted-foreground border border-border/60 group-hover:border-primary/50 group-hover:text-foreground"
                       )}
                     >
                       {isCompleted ? <Check className="size-4 stroke-[2.5]" /> : i + 1}
@@ -89,19 +94,19 @@ export function Wizard({
                         isCurrent
                           ? "text-foreground font-semibold"
                           : isCompleted
-                          ? "text-foreground/80"
-                          : "text-muted-foreground"
+                          ? "text-foreground/80 group-hover:text-primary"
+                          : "text-muted-foreground group-hover:text-foreground"
                       )}
                     >
                       {step.title}
                     </span>
-                  </div>
+                  </button>
 
                   {/* Connector Line */}
                   {i < steps.length - 1 && (
                     <div
                       className={cn(
-                        "h-0.5 w-full flex-1 -translate-y-3 transition-colors duration-300",
+                        "h-0.5 w-full flex-1 -translate-y-3 transition-colors duration-300 pointer-events-none",
                         i < currentStep ? "bg-primary" : "bg-border/60"
                       )}
                     />
@@ -112,25 +117,55 @@ export function Wizard({
           </ol>
         </nav>
 
-        {/* Mobile Compact Stepper */}
-        <div className="sm:hidden flex items-center justify-between bg-card border border-border/70 rounded-xl p-3.5 shadow-xs">
-          <div className="flex items-center gap-2.5">
-            <span className="size-7 rounded-full bg-primary text-primary-foreground text-xs font-bold flex items-center justify-center shadow-xs">
-              {currentStep + 1}
-            </span>
-            <div>
-              <p className="text-[11px] text-muted-foreground font-medium">Step {currentStep + 1} of {steps.length}</p>
-              <p className="text-sm font-semibold text-foreground">{steps[currentStep].title}</p>
+        {/* Mobile Compact Stepper — Interactive */}
+        <div className="sm:hidden bg-card border border-border/70 rounded-xl p-3.5 shadow-xs space-y-3">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2.5">
+              <span className="size-7 rounded-full bg-primary text-primary-foreground text-xs font-bold flex items-center justify-center shadow-xs">
+                {currentStep + 1}
+              </span>
+              <div>
+                <p className="text-[11px] text-muted-foreground font-medium">Step {currentStep + 1} of {steps.length}</p>
+                <p className="text-sm font-semibold text-foreground">{steps[currentStep].title}</p>
+              </div>
+            </div>
+
+            {/* Quick Next/Back for Mobile */}
+            <div className="flex items-center gap-1.5">
+              {currentStep > 0 && (
+                <Button variant="outline" size="xs" onClick={prev} disabled={loading} className="h-7 px-2.5 text-xs">
+                  <ArrowLeft className="size-3" />
+                </Button>
+              )}
+              <Button size="xs" onClick={next} disabled={loading} className="h-7 px-3 text-xs">
+                {currentStep < steps.length - 1 ? (
+                  <>
+                    <span>Next</span>
+                    <ArrowRight className="size-3 ml-1" />
+                  </>
+                ) : (
+                  <span>Save</span>
+                )}
+              </Button>
             </div>
           </div>
-          <div className="flex gap-1.5 items-center">
-            {steps.map((_, i) => (
-              <div
-                key={i}
+
+          {/* Clickable Step Pills */}
+          <div className="flex gap-1.5 items-center justify-between pt-1">
+            {steps.map((step, i) => (
+              <button
+                key={step.title}
+                type="button"
+                onClick={() => setCurrentStep(i)}
                 className={cn(
-                  "h-1.5 rounded-full transition-all duration-300",
-                  i === currentStep ? "w-5 bg-primary" : i < currentStep ? "w-2.5 bg-primary/60" : "w-1.5 bg-muted"
+                  "h-2 rounded-full flex-1 transition-all duration-300 cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-primary",
+                  i === currentStep
+                    ? "bg-primary ring-2 ring-primary/20"
+                    : i < currentStep
+                    ? "bg-primary/60 hover:bg-primary/80"
+                    : "bg-muted hover:bg-muted-foreground/30"
                 )}
+                title={`Jump to ${step.title}`}
               />
             ))}
           </div>
@@ -138,13 +173,50 @@ export function Wizard({
       </div>
 
       {/* Main Step Content Card */}
-      <div className="bg-card rounded-2xl border border-border/80 p-5 sm:p-6 md:p-8 shadow-xs mb-8 transition-all">
-        <div className="mb-6 pb-4 border-b border-border/60 flex items-center justify-between">
+      <div className="bg-card rounded-2xl border border-border/80 p-5 sm:p-6 md:p-8 shadow-xs transition-all">
+        {/* Card Header with Step Title and Quick Action Buttons */}
+        <div className="mb-6 pb-4 border-b border-border/60 flex items-center justify-between gap-4">
           <div>
             <h2 className="text-lg sm:text-xl font-bold tracking-tight text-foreground">{CurrentStep.title}</h2>
             <p className="text-xs text-muted-foreground mt-0.5">
-              Step {currentStep + 1} of {steps.length} — configuration is saved in this tab
+              Step {currentStep + 1} of {steps.length} — click any step above to jump directly
             </p>
+          </div>
+
+          {/* Quick Navigation in Card Header */}
+          <div className="flex items-center gap-2 shrink-0">
+            {currentStep > 0 && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={prev}
+                disabled={loading}
+                className="gap-1.5 h-8 px-3 text-xs cursor-pointer"
+              >
+                <ArrowLeft className="size-3.5" />
+                <span className="hidden sm:inline">Back</span>
+              </Button>
+            )}
+            <Button
+              size="sm"
+              onClick={next}
+              disabled={loading}
+              className="gap-1.5 h-8 px-3.5 text-xs shadow-xs cursor-pointer"
+            >
+              {loading ? (
+                <span>Saving...</span>
+              ) : currentStep < steps.length - 1 ? (
+                <>
+                  <span>Next Step</span>
+                  <ArrowRight className="size-3.5" />
+                </>
+              ) : (
+                <>
+                  <Save className="size-3.5" />
+                  <span>Save Campaign</span>
+                </>
+              )}
+            </Button>
           </div>
         </div>
 
@@ -164,25 +236,27 @@ export function Wizard({
             {CurrentStep.render({ data, updateData })}
           </div>
         </ErrorBoundary>
-      </div>
 
-      {/* Bottom Sticky Action Buttons */}
-      <div className="fixed bottom-0 left-0 right-0 bg-card/95 backdrop-blur-md border-t border-border/70 p-4 md:static md:border-0 md:p-0 md:bg-transparent z-30">
-        <div className="flex items-center justify-between max-w-4xl mx-auto gap-4">
+        {/* In-Card Bottom Action Buttons */}
+        <div className="mt-8 pt-6 border-t border-border/60 flex items-center justify-between gap-4">
           <Button
             variant="outline"
             onClick={prev}
             disabled={currentStep === 0 || loading}
-            className="gap-2 h-10 px-4"
+            className="gap-2 h-10 px-4 cursor-pointer"
           >
             <ArrowLeft className="size-4" />
             <span>Back</span>
           </Button>
 
+          <div className="text-xs text-muted-foreground hidden sm:block">
+            Step {currentStep + 1} of {steps.length}: <span className="font-medium text-foreground">{CurrentStep.title}</span>
+          </div>
+
           <Button
             onClick={next}
             disabled={loading}
-            className="gap-2 h-10 px-6 shadow-xs"
+            className="gap-2 h-10 px-6 shadow-xs cursor-pointer"
           >
             {loading ? (
               <span>Saving...</span>
