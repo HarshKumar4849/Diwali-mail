@@ -8,7 +8,7 @@ import {
   setMailboxThrottledUntil,
   getMailboxThrottledUntil,
 } from "@/lib/graph/client";
-import { renderTemplate, compileTemplate } from "@/lib/email/template";
+import { renderTemplate, compileTemplate, cleanHtmlWhitespace, autoLinkHtml } from "@/lib/email/template";
 import { createClient } from "@/lib/supabase/server";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Recipient, Campaign, Attachment } from "@/types";
@@ -65,7 +65,12 @@ export async function sendEmail({ campaign, recipient, globalAttachments, supaba
   const graphClient = await createGraphClient(campaign.user_id, supabase);
 
   const subject = renderTemplate(campaign.subject_template, recipient.data);
-  let body = compileTemplate(campaign.body_template, recipient.data);
+  let body: string;
+  if (recipient.data?.__is_html_body === "true" && recipient.data?.body) {
+    body = autoLinkHtml(cleanHtmlWhitespace(recipient.data.body));
+  } else {
+    body = compileTemplate(campaign.body_template, recipient.data);
+  }
 
   // Convert base64 images to hosted URLs (Gmail doesn't render base64 images)
   const db = supabase || await createClient();
