@@ -71,6 +71,7 @@ CREATE TABLE microsoft_tokens (
   access_token TEXT NOT NULL,
   refresh_token TEXT NOT NULL,
   expires_at TIMESTAMPTZ NOT NULL,
+  microsoft_email TEXT DEFAULT '',
   created_at TIMESTAMPTZ DEFAULT now(),
   updated_at TIMESTAMPTZ DEFAULT now()
 );
