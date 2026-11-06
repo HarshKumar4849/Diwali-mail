@@ -15,7 +15,7 @@ const payload = {
       body: "<h1>Great News!</h1><p>This email was sent using the <strong>Mailcraft External Campaign API</strong>.</p><p>Links work too: <a href='https://mailcraft.app'>Visit Website</a></p>",
     },
     {
-      to: "anubhav@tecmotivsolutions.com",
+      to: "test@test.com",
       from: "yogeshumbarkar@tecmotivsolutions.com",
       subject: "Second test email in the same batch",
       body: "<p>Hi there,</p><p>This is recipient #2 in the batch!</p>",
