@@ -101,3 +101,13 @@ CREATE TRIGGER update_campaigns_updated_at
 CREATE TRIGGER update_microsoft_tokens_updated_at
   BEFORE UPDATE ON microsoft_tokens
   FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+
+-- Storage policies for the mailcraft bucket
+INSERT INTO storage.buckets (id, name, public)
+VALUES ('mailcraft', 'mailcraft', true)
+ON CONFLICT (id) DO UPDATE SET public = true;
+
+CREATE POLICY "Allow all on mailcraft bucket"
+ON storage.objects FOR ALL
+USING ( bucket_id = 'mailcraft' )
+WITH CHECK ( bucket_id = 'mailcraft' );

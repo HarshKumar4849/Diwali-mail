@@ -10,13 +10,14 @@ import {
 } from "@/lib/graph/client";
 import { renderTemplate, compileTemplate, cleanHtmlWhitespace, autoLinkHtml } from "@/lib/email/template";
 import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Recipient, Campaign, Attachment } from "@/types";
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 async function downloadAttachment(path: string, name: string, supabase?: SupabaseClient): Promise<{ name: string; contentBytes: string; contentType: string }> {
-  const db = supabase || await createClient();
+  const db = supabase || createAdminClient();
   const isUrl = path.startsWith("http://") || path.startsWith("https://");
 
   let buffer: ArrayBuffer;
@@ -90,10 +91,11 @@ export async function sendEmail({ campaign, recipient, globalAttachments, supaba
   }
 
   if (imagesToUpload.length > 0) {
+    const storageDb = createAdminClient();
     await Promise.all(
       imagesToUpload.map(async (img) => {
         const raw = Buffer.from(img.b64, "base64");
-        const { error } = await db.storage.from("mailcraft").upload(img.filePath, raw, {
+        const { error } = await storageDb.storage.from("mailcraft").upload(img.filePath, raw, {
           contentType: `image/${img.ext}`,
           upsert: false,
         });
@@ -102,7 +104,7 @@ export async function sendEmail({ campaign, recipient, globalAttachments, supaba
     );
 
     for (const img of imagesToUpload) {
-      const { data: { publicUrl } } = db.storage.from("mailcraft").getPublicUrl(img.filePath);
+      const { data: { publicUrl } } = storageDb.storage.from("mailcraft").getPublicUrl(img.filePath);
       body = body.replace(img.fullTag, `<img src="${publicUrl}"${img.restAttrs}>`);
     }
 
