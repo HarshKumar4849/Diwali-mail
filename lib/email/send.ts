@@ -73,43 +73,34 @@ export async function sendEmail({ campaign, recipient, globalAttachments, supaba
     body = compileTemplate(campaign.body_template, recipient.data);
   }
 
-  // Convert base64 images to hosted URLs (Gmail doesn't render base64 images)
-  const db = supabase || await createClient();
-  const imgRegex = /<img\s+src="data:image\/([^;]+);base64,([^"]+)"([^>]*)>/g;
-  let imgMatch: RegExpExecArray | null;
-  const imagesToUpload: Array<{ fullTag: string; ext: string; b64: string; restAttrs: string; filePath: string }> = [];
+  // Convert base64 images to inline CID attachments
+  // (Gmail & Outlook block base64 images, and external URLs get blocked by privacy shields or exhaust Supabase bandwidth quotas.
+  // Microsoft Graph inline attachments via cid: embed directly inside the email and render natively across Gmail, Outlook, iPhone, and Android!)
+  const imgRegex = /<img([^>]*?)src=["']data:image\/([a-zA-Z0-9+]+);base64,([^"']+)["']([^>]*)>/gi;
+  const inlineImages: Array<{
+    "@odata.type": string;
+    name: string;
+    contentType: string;
+    contentBytes: string;
+    isInline: boolean;
+    contentId: string;
+  }> = [];
 
-  while ((imgMatch = imgRegex.exec(body)) !== null) {
-    const ext = imgMatch[1];
-    imagesToUpload.push({
-      fullTag: imgMatch[0],
-      ext,
-      b64: imgMatch[2],
-      restAttrs: imgMatch[3],
-      filePath: `email-images/${crypto.randomUUID()}.${ext}`,
+  let imgIndex = 0;
+  body = body.replace(imgRegex, (_match, before, ext, b64, after) => {
+    imgIndex++;
+    const contentId = `img_${imgIndex}_${crypto.randomUUID()}`;
+    const cleanExt = ext.toLowerCase() === "jpeg" || ext.toLowerCase() === "jpg" ? "jpeg" : ext.toLowerCase();
+    inlineImages.push({
+      "@odata.type": "#microsoft.graph.fileAttachment",
+      name: `image_${imgIndex}.${cleanExt === "jpeg" ? "jpg" : cleanExt}`,
+      contentType: `image/${cleanExt}`,
+      contentBytes: b64,
+      isInline: true,
+      contentId,
     });
-  }
-
-  if (imagesToUpload.length > 0) {
-    const storageDb = createAdminClient();
-    await Promise.all(
-      imagesToUpload.map(async (img) => {
-        const raw = Buffer.from(img.b64, "base64");
-        const { error } = await storageDb.storage.from("mailcraft").upload(img.filePath, raw, {
-          contentType: `image/${img.ext}`,
-          upsert: false,
-        });
-        if (error) throw new Error(`Failed to upload image: ${error.message}`);
-      })
-    );
-
-    for (const img of imagesToUpload) {
-      const { data: { publicUrl } } = storageDb.storage.from("mailcraft").getPublicUrl(img.filePath);
-      body = body.replace(img.fullTag, `<img src="${publicUrl}"${img.restAttrs}>`);
-    }
-
-    console.log(`[sendEmail] Uploaded and linked ${imagesToUpload.length} inline image(s) for ${recipient.email}`);
-  }
+    return `<img${before}src="cid:${contentId}"${after}>`;
+  });
 
   const message: Record<string, unknown> = {
     subject,
@@ -144,14 +135,25 @@ export async function sendEmail({ campaign, recipient, globalAttachments, supaba
     attachmentPromises.push(downloadAttachment(recipient.attachment_path, originalName, supabase));
   }
 
+  const attachments: Record<string, unknown>[] = [];
   if (attachmentPromises.length > 0) {
     const attachmentResults = await Promise.all(attachmentPromises);
-    const attachments = attachmentResults.map(a => ({
-      "@odata.type": "#microsoft.graph.fileAttachment",
-      ...a,
-    }));
+    for (const a of attachmentResults) {
+      attachments.push({
+        "@odata.type": "#microsoft.graph.fileAttachment",
+        ...a,
+      });
+    }
+  }
+
+  if (inlineImages.length > 0) {
+    attachments.push(...inlineImages);
+    console.log(`[sendEmail] Embedded ${inlineImages.length} inline CID image(s) for ${recipient.email}`);
+  }
+
+  if (attachments.length > 0) {
     message.attachments = attachments;
-    console.log(`[sendEmail] Attached ${attachments.length} file(s) to email for ${recipient.email}`);
+    console.log(`[sendEmail] Attached total ${attachments.length} item(s) to email for ${recipient.email}`);
   } else {
     console.log(`[sendEmail] No attachments to attach for ${recipient.email}`);
   }
