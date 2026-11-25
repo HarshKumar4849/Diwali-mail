@@ -29,7 +29,7 @@ const statusConfig: Record<
     badgeClass: "bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-950/60 dark:text-blue-300 animate-pulse",
   },
   sent: {
-    label: "Delivered",
+    label: "Sent",
     icon: CheckCircle2,
     badgeClass: "bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/60 dark:text-emerald-300",
   },
@@ -79,6 +79,7 @@ export function RecipientTable({ recipients }: { recipients: Recipient[] }) {
             <tr>
               <th className="px-4 py-2.5 font-semibold text-foreground/80">Recipient</th>
               <th className="px-4 py-2.5 font-semibold text-foreground/80">Status</th>
+              <th className="px-4 py-2.5 font-semibold text-foreground/80">Delivery</th>
               <th className="px-4 py-2.5 font-semibold text-foreground/80">Dispatched At</th>
               <th className="px-4 py-2.5 font-semibold text-foreground/80">Details</th>
             </tr>
@@ -102,6 +103,35 @@ export function RecipientTable({ recipients }: { recipients: Recipient[] }) {
                         <span>{config.label}</span>
                       </Badge>
                     </td>
+                    <td className="px-4 py-2.5">
+                      <Badge
+                        variant="outline"
+                        className={cn(
+                          "gap-1 px-2 py-0.5 text-[11px] font-medium shrink-0 transition-all duration-200 shadow-2xs",
+                          r.bounced_at
+                            ? "bg-rose-50 text-rose-700 dark:bg-rose-950/40 dark:text-rose-300 border-rose-200 dark:border-rose-800"
+                            : r.reply_kind
+                              ? r.reply_kind === "genuine"
+                                ? "bg-sky-50 text-sky-700 dark:bg-sky-950/40 dark:text-sky-300 border-sky-200 dark:border-sky-800"
+                                : "bg-sky-50 text-sky-700 dark:bg-sky-950/40 dark:text-sky-300 border-sky-200 dark:border-sky-800"
+                              : r.status === "sent"
+                                ? "bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800"
+                                : "bg-muted text-muted-foreground border-border/70"
+                        )}
+                      >
+                        {r.bounced_at
+                          ? "Bounced"
+                          : r.reply_kind
+                            ? r.reply_kind === "genuine"
+                              ? "Replied"
+                              : "Auto-Reply"
+                            : r.status === "sent"
+                              ? "Delivered"
+                              : r.status === "failed"
+                                ? "Failed"
+                                : "Pending"}
+                      </Badge>
+                    </td>
                     <td className="px-4 py-2.5 text-muted-foreground whitespace-nowrap tabular-nums">
                       {r.sent_at
                         ? new Date(r.sent_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" })
@@ -121,7 +151,7 @@ export function RecipientTable({ recipients }: { recipients: Recipient[] }) {
               })
             ) : (
               <tr>
-                <td colSpan={4} className="py-12 text-center text-muted-foreground">
+                <td colSpan={5} className="py-12 text-center text-muted-foreground">
                   No matching recipients found.
                 </td>
               </tr>
