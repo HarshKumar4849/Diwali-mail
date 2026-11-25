@@ -6,6 +6,7 @@ import type { Campaign } from "@/types";
 import type { Session } from "@supabase/supabase-js";
 import { CampaignCard } from "@/components/campaign-card";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { ScrollReveal } from "@/components/ui/scroll-reveal";
 import { DeleteCampaignDialog } from "@/components/delete-campaign-dialog";
@@ -64,6 +65,14 @@ export default function Dashboard() {
 
   const [campaignToDelete, setCampaignToDelete] = useState<Campaign | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [history, setHistory] = useState<Array<{ id: string; name: string; status: string; created_at: string; sender_email: string; audience: number; scheduled_time: null }>>([]);
+
+  useEffect(() => {
+    fetch("/api/campaigns/history")
+      .then((r) => (r.ok ? r.json() : []))
+      .then(setHistory)
+      .catch(() => {});
+  }, []);
 
   const handleDeleteClick = (e: React.MouseEvent, campaign: Campaign) => {
     e.stopPropagation();
@@ -293,6 +302,33 @@ export default function Dashboard() {
             <span>Create Your First Campaign</span>
           </Button>
         </ScrollReveal>
+      )}
+
+      {/* Phase 3: Campaign History */}
+      {history.length > 0 && (
+        <div className="mt-12">
+          <h2 className="text-lg font-semibold tracking-tight text-foreground mb-4">Campaign History</h2>
+          <div className="rounded-xl border border-border/70 bg-card p-5 shadow-xs space-y-1">
+            {history
+              .filter((h) => h.status === "done" || h.status === "partial")
+              .map((h) => (
+                <div
+                  key={h.id}
+                  className="flex items-center justify-between gap-3 py-2.5 border-b border-border/40 last:border-0"
+                >
+                  <div className="min-w-0">
+                    <p className="font-medium text-sm text-foreground truncate">{h.name}</p>
+                    <p className="text-xs text-muted-foreground truncate">
+                      {new Date(h.created_at).toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" })} · {h.audience} contact(s) · Sender: {h.sender_email || "—"}
+                    </p>
+                  </div>
+                  <Badge variant="outline" className="shrink-0 text-xs font-medium">
+                    {h.status === "done" ? "Completed" : "Needs Attention"}
+                  </Badge>
+                </div>
+              ))}
+          </div>
+        </div>
       )}
 
       {/* Mobile Floating Action Button */}

@@ -3,10 +3,11 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
-import { LayoutDashboard, Plus, Settings } from "lucide-react";
+import { LayoutDashboard, Plus, Settings, AlarmClock } from "lucide-react";
 
 const tabs = [
   { href: "/", label: "Dashboard", icon: LayoutDashboard },
+  { href: "/followups", label: "Follow-ups", icon: AlarmClock },
   { href: "/campaign/new", label: "New Campaign", icon: Plus },
   { href: "/settings", label: "Settings", icon: Settings },
 ];

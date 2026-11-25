@@ -5,10 +5,11 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { createClient } from "@/lib/supabase/client";
-import { Mail, LayoutDashboard, Plus, Settings, User, LogOut } from "lucide-react";
+import { Mail, LayoutDashboard, Plus, Settings, User, LogOut, AlarmClock } from "lucide-react";
 
 const navLinks = [
   { href: "/", label: "Dashboard", icon: LayoutDashboard },
+  { href: "/followups", label: "Follow-ups", icon: AlarmClock },
   { href: "/campaign/new", label: "New Campaign", icon: Plus },
   { href: "/settings", label: "Settings", icon: Settings },
 ];

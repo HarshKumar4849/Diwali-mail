@@ -76,6 +76,20 @@ export default function NewCampaign() {
         const errJson = await recRes.json().catch(() => ({}));
         throw new Error(errJson.error || "Failed to save recipients");
       }
+      const recData = await recRes.json();
+      const insertedCount = Array.isArray(recData.data) ? recData.data.length : 0;
+      const dupList: string[] = Array.isArray(recData.duplicates) ? recData.duplicates : [];
+      const dupCount = typeof recData.duplicateCount === "number" ? recData.duplicateCount : dupList.length;
+      // Pass batch-level audience numbers (original/eligible/duplicates) to the campaign page.
+      sessionStorage.setItem(
+        "mailcraft-audience-summary",
+        JSON.stringify({
+          total: data.csvRows?.length || 0,
+          eligible: insertedCount,
+          duplicateCount: dupCount,
+          duplicates: dupList,
+        })
+      );
 
       const validAttachments = (data.globalAttachments || []).filter(
         (att: { path?: string; name?: string }) => att.path && att.name

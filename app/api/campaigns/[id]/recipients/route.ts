@@ -46,19 +46,36 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     return NextResponse.json({ error: "recipients must be an array" }, { status: 400 });
   }
 
+  const emails = new Set<string>();
+  const existingRes = await supabase
+    .from("recipients")
+    .select("email")
+    .eq("campaign_id", id);
+  for (const r of existingRes.data || []) {
+    emails.add((r.email || "").toLowerCase());
+  }
+
+  const recipients: Array<{ campaign_id: string; email: string; data: Record<string, string>; attachment_path: string }> = [];
+  const duplicates: string[] = [];
   for (const r of body.recipients) {
     if (!r.email || !EMAIL_RE.test(r.email)) {
       return NextResponse.json({ error: `Invalid email: ${r.email}` }, { status: 400 });
     }
+    // Duplicate check within the campaign audience: skip re-adding an email that already exists
+    if (emails.has(r.email.toLowerCase())) {
+      duplicates.push(r.email);
+      continue;
+    }
+    emails.add(r.email.toLowerCase());
+    recipients.push({
+      campaign_id: id,
+      email: r.email,
+      data: r.data || {},
+      attachment_path: r.attachment_path || "",
+    });
   }
 
-  const recipients = body.recipients.map((r: { email: string; data: Record<string, string>; attachment_path?: string }) => ({
-    campaign_id: id,
-    email: r.email,
-    data: r.data,
-    attachment_path: r.attachment_path || "",
-  }));
   const { data, error } = await supabase.from("recipients").insert(recipients).select();
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
-  return NextResponse.json(data, { status: 201 });
+  return NextResponse.json({ data, duplicates, duplicateCount: duplicates.length });
 }
